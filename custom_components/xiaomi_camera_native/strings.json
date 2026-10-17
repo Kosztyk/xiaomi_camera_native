@@ -1,0 +1,136 @@
+{
+  "title": "Xiaomi Camera Native",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Xiaomi Camera Native",
+        "description": "Experimental direct MISS/CS2 camera streaming. Sign in to the same region used in Mi Home.",
+        "menu_options": {
+          "login": "Sign in with Xiaomi account",
+          "token": "Use an existing Mi Home account credential"
+        }
+      },
+      "login": {
+        "title": "Xiaomi account",
+        "description": "Your password is used for this login only. A reusable account credential is stored by Home Assistant.",
+        "data": {
+          "username": "Email, phone number or Xiaomi ID",
+          "password": "Password",
+          "region": "Mi Home region"
+        }
+      },
+      "token": {
+        "title": "Existing Mi Home credential",
+        "description": "Enter your numeric Xiaomi account ID and the account passToken. This is the account credential from the xiaomi section of go2rtc.yaml, not a camera's 32-character device token. Do not share it.",
+        "data": {
+          "user_id": "Xiaomi account ID",
+          "pass_token": "Mi Home passToken",
+          "region": "Mi Home region"
+        }
+      },
+      "captcha": {
+        "title": "Xiaomi CAPTCHA",
+        "description": "Enter the characters shown in the image.\n\n![Xiaomi CAPTCHA]({captcha_image})",
+        "data": {
+          "captcha": "CAPTCHA"
+        }
+      },
+      "verification": {
+        "title": "Xiaomi verification",
+        "description": "Xiaomi sent a verification code to {destination}.",
+        "data": {
+          "code": "Verification code"
+        }
+      },
+      "cameras": {
+        "title": "Select cameras",
+        "description": "CS2 cameras are supported in this experimental release. If a camera has no local IP, set it in the integration's camera options before opening live view.",
+        "data": {
+          "cameras": "Cameras"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Xiaomi rejected the login or verification code. Check your account and region, or use a valid Mi Home passToken.",
+      "cannot_connect": "Cannot reach Xiaomi. Check Home Assistant's internet connection and try again.",
+      "invalid_captcha": "Enter the new CAPTCHA shown below.",
+      "select_camera": "Select at least one camera.",
+      "invalid_host": "Enter the camera's local IPv4 address."
+    },
+    "abort": {
+      "already_configured": "This Xiaomi account and region are already configured.",
+      "wrong_account": "Sign in with the same Xiaomi account and region as this integration.",
+      "no_cameras": "No cameras were found in this Xiaomi account region.",
+      "discovery_failed": "Camera discovery failed. Check the account region and try again.",
+      "reauth_successful": "Xiaomi account authentication was updated.",
+      "reauth_required": "Reauthenticate the integration before discovering cameras."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Xiaomi camera options",
+        "menu_options": {
+          "camera": "Configure a camera",
+          "rediscover": "Discover and select cameras"
+        }
+      },
+      "camera": {
+        "title": "Choose a camera",
+        "data": {
+          "camera": "Camera"
+        }
+      },
+      "profile": {
+        "title": "Configure {camera}",
+        "description": "H.264 uses FFmpeg on the Home Assistant host. Original keeps the camera's codec and resolution. The height setting applies to H.264 only.",
+        "data": {
+          "host": "Camera IPv4 address",
+          "transport": "CS2 transport",
+          "quality": "Camera quality",
+          "video_mode": "Video output",
+          "height": "Maximum H.264 height",
+          "idle_timeout": "Disconnect after no viewers (seconds)"
+        }
+      },
+      "rediscover": {
+        "title": "Select cameras",
+        "description": "Select the cameras to expose in Home Assistant. Existing entity IDs are retained for cameras that stay selected.",
+        "data": {
+          "cameras": "Cameras"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Xiaomi rejected the login or verification code. Check your account and region, or use a valid Mi Home passToken.",
+      "cannot_connect": "Cannot reach Xiaomi. Check Home Assistant's internet connection and try again.",
+      "invalid_captcha": "Enter the new CAPTCHA shown below.",
+      "select_camera": "Select at least one camera.",
+      "invalid_host": "Enter the camera's local IPv4 address."
+    },
+    "abort": {
+      "already_configured": "This Xiaomi account and region are already configured.",
+      "wrong_account": "Sign in with the same Xiaomi account and region as this integration.",
+      "no_cameras": "No cameras were found in this Xiaomi account region.",
+      "discovery_failed": "Camera discovery failed. Check the account region and try again.",
+      "reauth_successful": "Xiaomi account authentication was updated.",
+      "reauth_required": "Reauthenticate the integration before discovering cameras."
+    }
+  },
+  "entity": {
+    "button": {
+      "pan_left": {
+        "name": "Pan left"
+      },
+      "pan_right": {
+        "name": "Pan right"
+      },
+      "tilt_up": {
+        "name": "Tilt up"
+      },
+      "tilt_down": {
+        "name": "Tilt down"
+      }
+    }
+  }
+}
