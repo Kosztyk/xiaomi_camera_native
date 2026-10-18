@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from homeassistant.components.camera import Camera, CameraEntityFeature
-from homeassistant.components.ffmpeg import async_get_image
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -12,6 +14,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, TARGET_MODELS
 from .protocol.session import CameraSession, LoopbackServer
+from .protocol.snapshot import (
+    SNAPSHOT_CACHE_SECONDS,
+    SNAPSHOT_RETRY_SECONDS,
+    SNAPSHOT_TIMEOUT,
+    async_get_snapshot,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -45,6 +55,11 @@ class NativeXiaomiCamera(Camera):
         # Home Assistant accepts a small set of stream options, not arbitrary
         # libavformat flags. MPEG-TS works with the built-in defaults.
         self.stream_options = {}
+        self._fast_snapshot_enabled = True
+        self._snapshot_lock = asyncio.Lock()
+        self._snapshot_cache: tuple[tuple[int | None, int | None], float, bytes] | None = None
+        self._snapshot_retry_at = 0.0
+        self._last_snapshot_error: str | None = None
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -69,11 +84,20 @@ class NativeXiaomiCamera(Camera):
             "transport": session.protocol,
             "source_codec": session.codec,
             "video_mode": session.options.video_mode,
+            "max_h264_height": session.options.height,
             "frames_received": session.frames,
             "reconnects": session.reconnects,
+            "encoder_restarts": session.encoder_restarts,
+            "encoder_dropped_frames": session.encoder_dropped_frames,
             "last_error": session.last_error,
             "pan_tilt_supported": session.supports_pan_tilt,
             "last_ptz_error": session.last_ptz_error,
+            "fast_snapshot_enabled": self._fast_snapshot_enabled,
+            "last_snapshot_error": self._last_snapshot_error,
+            "ip_address": session.host,
+            "auto_update_ip": session.options.auto_update_ip,
+            "address_source": session.address_source,
+            "address_updates": session.address_updates,
         }
         if session.supports_pan_tilt and getattr(self, "hass", None) is not None:
             registry = er.async_get(self.hass)
@@ -94,10 +118,64 @@ class NativeXiaomiCamera(Camera):
         # The stream URL is local to HA, not a go2rtc or Xiaomi cloud URL.
         return self._server.source(self._session.device.did)
 
+    def _set_snapshot_error(self, error: str | None) -> None:
+        if self._last_snapshot_error == error:
+            return
+        self._last_snapshot_error = error
+        if getattr(self, "entity_id", None):
+            self.async_write_ha_state()
+
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        # Reuses the shared MISS session; it does not log in a second time.
-        return await async_get_image(
-            self.hass, await self.stream_source(), width=width, height=height
-        )
+        # One budget includes lock waiting and both probe modes. A stalled
+        # camera must not trigger two successive full-length snapshot waits.
+        loop = asyncio.get_running_loop()
+        key = (width, height)
+        try:
+            async with asyncio.timeout(SNAPSHOT_TIMEOUT):
+                async with self._snapshot_lock:
+                    cached = self._snapshot_cache
+                    if (
+                        cached
+                        and cached[0] == key
+                        and loop.time() - cached[1] < SNAPSHOT_CACHE_SECONDS
+                    ):
+                        return cached[2]
+                    if loop.time() < self._snapshot_retry_at:
+                        return None
+                    source = await self.stream_source()
+                    try:
+                        image = await async_get_snapshot(
+                            self._session.ffmpeg,
+                            source,
+                            width=width,
+                            height=height,
+                            fast=self._fast_snapshot_enabled,
+                        )
+                    except TimeoutError:
+                        raise
+                    except Exception:
+                        image = None
+                    if image is None and self._fast_snapshot_enabled:
+                        # Only a reader which exits unsuccessfully gets an
+                        # immediate standard-probe retry. A timeout propagates
+                        # to the shared deadline instead of starting a retry.
+                        self._fast_snapshot_enabled = False
+                        _LOGGER.debug("Fast snapshot unavailable; using standard input analysis")
+                        image = await async_get_snapshot(
+                            self._session.ffmpeg, source, width=width, height=height, fast=False
+                        )
+                    if image is not None:
+                        self._snapshot_cache = (key, loop.time(), image)
+                        self._set_snapshot_error(None)
+                        return image
+                    self._set_snapshot_error("FFmpeg did not produce a complete snapshot")
+        except TimeoutError:
+            self._set_snapshot_error("Snapshot timed out waiting for video")
+        except Exception:
+            # Do not expose commands, loopback tokens, or exception payloads.
+            self._set_snapshot_error("Snapshot capture failed")
+        self._snapshot_retry_at = loop.time() + SNAPSHOT_RETRY_SECONDS
+        _LOGGER.debug("Snapshot unavailable; waiting briefly before another capture")
+        return None

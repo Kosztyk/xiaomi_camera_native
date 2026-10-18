@@ -17,7 +17,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .const import CONF_DEVICES, CONF_PASS_TOKEN, CONF_PROFILES, CONF_REGION, CONF_USER_ID, DOMAIN
 from .protocol.cloud import REGIONS, CameraDevice, XiaomiCloud
 from .protocol.errors import AuthenticationError, CloudError, LoginChallenge
-from .protocol.session import StreamOptions
+from .protocol.session import H264_HEIGHTS, StreamOptions, parse_h264_height
 
 
 def _password() -> selector.TextSelector:
@@ -239,26 +239,42 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
             raw for raw in self.config_entry.data[CONF_DEVICES] if raw["did"] == self._did
         )
         profiles = self.config_entry.options.get(CONF_PROFILES, {})
-        current = {
-            **asdict(StreamOptions()),
-            "host": device["host"],
-            "quality": "auto" if device["model"] == "mxiang.camera.c301" else "hd",
-            **profiles.get(self._did, {}),
-        }
+        current = asdict(
+            StreamOptions.from_profile(
+                {
+                    "host": device["host"],
+                    "quality": "auto" if device["model"] == "mxiang.camera.c301" else "hd",
+                    **profiles.get(self._did, {}),
+                }
+            )
+        )
         errors = {}
         if user_input is not None:
             try:
-                address = ipaddress.IPv4Address(user_input["host"])
-                if address.is_unspecified or address.is_multicast or int(address) == 0xFFFFFFFF:
-                    raise ValueError
+                height = parse_h264_height(user_input.get("height", current["height"]))
+            except ValueError:
+                errors["height"] = "invalid_height"
+            try:
+                host = user_input.get("host", "")
+                if host or not user_input.get("auto_update_ip", True):
+                    address = ipaddress.IPv4Address(host)
+                    if address.is_unspecified or address.is_multicast or int(address) == 0xFFFFFFFF:
+                        raise ValueError
             except ValueError:
                 errors["host"] = "invalid_host"
-            else:
+            if not errors:
                 return self.async_create_entry(
                     title="",
                     data={
                         **self.config_entry.options,
-                        CONF_PROFILES: {**profiles, self._did: user_input},
+                        CONF_PROFILES: {
+                            **profiles,
+                            self._did: {
+                                **profiles.get(self._did, {}),
+                                **user_input,
+                                "height": height,
+                            },
+                        },
                     },
                 )
         return self.async_show_form(
@@ -267,7 +283,8 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
             description_placeholders={"camera": device["name"]},
             data_schema=vol.Schema(
                 {
-                    vol.Required("host", default=current["host"]): str,
+                    vol.Optional("host", default=current["host"]): str,
+                    vol.Required("auto_update_ip", default=current["auto_update_ip"]): bool,
                     vol.Required("transport", default=current["transport"]): vol.In(
                         {"auto": "Automatic", "udp": "UDP", "tcp": "TCP"}
                     ),
@@ -285,8 +302,8 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
                     vol.Required("video_mode", default=current["video_mode"]): vol.In(
                         {"h264": "H.264 (FFmpeg)", "original": "Original (no transcoding)"}
                     ),
-                    vol.Required("height", default=current["height"]): vol.In(
-                        {360: "360p", 720: "720p", 1080: "1080p", 2160: "2160p"}
+                    vol.Required("height", default=str(current["height"])): vol.In(
+                        {str(height): label for height, label in H264_HEIGHTS.items()}
                     ),
                     vol.Required("idle_timeout", default=current["idle_timeout"]): vol.All(
                         vol.Coerce(int), vol.Range(min=10, max=300)
