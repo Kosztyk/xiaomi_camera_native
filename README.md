@@ -44,9 +44,22 @@ Other modern MISS/CS2 cameras may work for video, but are not verified. **TUTK, 
 - Internet access for Xiaomi account authentication and fresh camera session keys.
 - FFmpeg available to Home Assistant, including the `libx264` encoder for H.264 output.
 
-The project declares **Home Assistant 2025.3.0** as its minimum baseline. Initial live streaming diagnostics were checked on Home Assistant 2026.10.2; not every Home Assistant version has been tested. The integration loads the standard `camera`, `ffmpeg`, `frontend` and `stream` dependencies automatically.
+The documented minimum baseline is **Home Assistant 2025.3.0**. Initial live streaming diagnostics were checked on Home Assistant 2026.10.2; not every Home Assistant version has been tested. The integration loads the standard `camera`, `ffmpeg`, `frontend` and `stream` dependencies automatically.
 
 ## Installation
+
+### Installation through HACS (Custom repository)
+
+1. Open **HACS** in Home Assistant.
+2. From the three-dot menu, choose **Custom repositories**.
+3. Add `https://github.com/Kosztyk/xiaomi_camera_native` and select **Integration**.
+4. Find **Xiaomi Camera Native** in HACS and install it.
+5. Restart Home Assistant; then add it from **Settings → Devices & services**.
+
+Until the HACS default-catalog PR is accepted, the Custom repositories
+step is required. After acceptance, the integration can be found by search.
+
+### Manual installation
 
 1. Download and extract the integration ZIP, or download this repository.
 2. Copy the `custom_components/xiaomi_camera_native` directory into your Home Assistant configuration directory.
@@ -216,36 +229,22 @@ When reporting an issue, include the camera model, firmware, Home Assistant vers
 
 ## Development and testing
 
-Run from the repository root with Python 3.12 or newer:
+Run from the repository root with Python 3.12 or later:
 
 ```bash
-python3 -m pip install -r requirements-test.txt ruff
+python3 tools/validate_package.py
 python3 -m unittest discover -s tests -v
-ruff check custom_components tests tools
-ruff format --check custom_components tests tools
-python3 -m compileall -q custom_components tests tools
+python3 -m compileall -q custom_components
 ```
 
-Decoder tests require FFmpeg/ffprobe, including `libx264` and `libx265` for generated fixtures. The runtime H.264 encoder uses `libx264`.
+These commands check package metadata and Python syntax. The bundled
+tests are **packaging tests only**; they are not a substitute for camera
+integration or on-device testing. Remote GitHub Actions run HACS and
+Hassfest validations after you push the repository.
 
-Frontend DOM tests use Node.js and a test-only LinkeDOM installation:
-
-```bash
-npm install --prefix /tmp/xiaomi-camera-ui-tests --no-audit --no-fund linkedom
-NODE_PATH=/tmp/xiaomi-camera-ui-tests/node_modules node --test tests/test_camera_controls.cjs
-```
-
-No npm packages are required inside Home Assistant.
-
-Version 0.3.0 passed **73 Python tests and 9 JavaScript DOM tests**, plus compilation and Ruff checks. These tests cover cryptographic vectors, emulated UDP/TCP camera traffic, real FFmpeg decoding, shared sessions, movement commands, cleanup and frontend action routing. They do not establish compatibility with every physical camera or run the complete Home Assistant frontend. See [VALIDATION.md](VALIDATION.md).
-
-For an optional standalone camera probe:
-
-```bash
-python3 tools/probe_camera.py --region de --user-id YOUR_XIAOMI_ID --list
-```
-
-The probe prompts for the account passToken using hidden input. Use `--help` for capture options.
+Earlier documentation described a larger set of protocol and DOM tests
+that is **not included** in the currently published repository.
+See [VALIDATION.md](VALIDATION.md) for test scope and limits.
 
 ## Credits and license
 
@@ -253,4 +252,4 @@ Developed by **Kosztyk**.
 
 The Xiaomi cloud and MISS/CS2 protocol implementations adapt work from [AlexxIT/go2rtc](https://github.com/AlexxIT/go2rtc), used under its MIT license. The motor-command reference is documented in [go2rtc PR #2531](https://github.com/AlexxIT/go2rtc/pull/2531).
 
-Original copyright and permission notices are preserved in [LICENSE](LICENSE) and [NOTICE](NOTICE). go2rtc itself and Xiaomi's closed-source SDK are not bundled or executed by this integration.
+Original copyright and permission notices are preserved in [LICENSE](License) and [NOTICE](custom_components/xiaomi_camera_native/NOTICE). go2rtc itself and Xiaomi's closed-source SDK are not bundled or executed by this integration.
