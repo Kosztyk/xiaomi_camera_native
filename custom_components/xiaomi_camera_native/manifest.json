@@ -9,6 +9,7 @@
     "camera",
     "ffmpeg",
     "frontend",
+    "http",
     "stream"
   ],
   "documentation": "https://github.com/Kosztyk/xiaomi_camera_native#readme",
