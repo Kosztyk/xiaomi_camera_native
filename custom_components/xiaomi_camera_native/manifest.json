@@ -11,8 +11,10 @@
     "frontend",
     "stream"
   ],
+  "documentation": "https://github.com/Kosztyk/xiaomi_camera_native#readme",
+  "issue_tracker": "https://github.com/Kosztyk/xiaomi_camera_native/issues",
   "integration_type": "hub",
   "iot_class": "local_push",
   "requirements": [],
-  "version": "0.3.7"
+  "version": "0.3.8"
 }
