@@ -43,6 +43,13 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
                 errors.append('Manifest version must be 0.3.8 for this upgrade')
             if not manifest.get('codeowners'):
                 errors.append('Manifest needs at least one codeowner')
+            expected_order = ['domain', 'name'] + sorted(
+                key for key in manifest if key not in ('domain', 'name')
+            )
+            if list(manifest) != expected_order:
+                errors.append(
+                    'Manifest keys must be ordered domain, name, then alphabetically'
+                )
         except (ValueError, UnicodeDecodeError) as exc:
             errors.append(f'Invalid manifest JSON: {exc}')
 
