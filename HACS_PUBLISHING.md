@@ -2,10 +2,11 @@
 
 Repository: https://github.com/Kosztyk/xiaomi_camera_native
 
-## 1. Merge this PR
+## 1. Merge reviewer fixes
 
-Merge the HACS publication PR only after checks succeed. No camera protocol,
-PTZ, streaming or authentication implementation changes are included.
+Merge v0.3.9 only after HACS, Hassfest and packaging checks succeed. The PTZ
+whitelist has not expanded and covers the three models with owner-provided
+physical test recordings.
 
 ## 2. Fix GitHub repository topic (metadata, not versioned file)
 
@@ -21,9 +22,8 @@ Python checks** are successful. Address any findings before releasing.
 
 ## 4. GitHub Release
 
-After the checks pass and the PR is merged, create a full release (not only
-a tag) with tag `v0.3.8`, targeting the merged commit.
-Use `RELEASE_NOTES_0.3.8.md` as the release description.
+The v0.3.9 release workflow automatically creates a full GitHub release after
+the successful main-branch validation run. Confirm release and CI job URLs.
 
 ## 5. Test HACS custom repository installation
 
@@ -33,11 +33,11 @@ https://github.com/Kosztyk/xiaomi_camera_native
 
 Select **Integration**, install, restart HA and configure the integration.
 
-## 6. Request inclusion in default HACS catalog
+## 6. Update existing HACS PR #12439
 
-- Fork https://github.com/hacs/default
-- In a new branch based on `master`, add `"Kosztyk/xiaomi_camera_native"`
-  into its `integration` JSON file in alphabetical order.
-- Create a PR toward `hacs/default:master` and follow the template.
+Do **not** create a duplicate catalog PR. Instead update
+https://github.com/hacs/default/pull/12439 with the v0.3.9 release,
+HACS/Hassfest validation jobs and evidence report. Attach the three videos,
+mark the draft ready and re-request review as Frenck requested.
 
 Reference: https://www.hacs.xyz/docs/publish/include/

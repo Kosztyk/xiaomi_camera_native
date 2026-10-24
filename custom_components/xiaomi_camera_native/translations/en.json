@@ -83,14 +83,15 @@
       },
       "profile": {
         "title": "Configure {camera}",
-        "description": "H.264 uses FFmpeg on the Home Assistant host. Original keeps the camera's codec and resolution. The height setting applies to H.264 only.",
+        "description": "Automatically recover a changed IP from matching Home Assistant router trackers or Xiaomi discovery. Turn automatic updates off to keep a fixed IP. H.264 uses FFmpeg; the height setting applies to H.264 only.",
         "data": {
           "host": "Camera IPv4 address",
           "transport": "CS2 transport",
           "quality": "Camera quality",
           "video_mode": "Video output",
           "height": "Maximum H.264 height",
-          "idle_timeout": "Disconnect after no viewers (seconds)"
+          "idle_timeout": "Disconnect after no viewers (seconds)",
+          "auto_update_ip": "Automatically update camera IP"
         }
       },
       "rediscover": {
@@ -106,7 +107,8 @@
       "cannot_connect": "Cannot reach Xiaomi. Check Home Assistant's internet connection and try again.",
       "invalid_captcha": "Enter the new CAPTCHA shown below.",
       "select_camera": "Select at least one camera.",
-      "invalid_host": "Enter the camera's local IPv4 address."
+      "invalid_host": "Enter the camera's local IPv4 address.",
+      "invalid_height": "Choose a maximum H.264 height of 360p, 720p, 1080p or 2160p."
     },
     "abort": {
       "already_configured": "This Xiaomi account and region are already configured.",

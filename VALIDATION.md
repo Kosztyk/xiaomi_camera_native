@@ -2,7 +2,7 @@
 
 This document distinguishes packaging checks from functional hardware testing.
 
-## Packaging validation (0.3.8)
+## Packaging validation (0.3.9)
 
 Run from the root of the repository:
 
@@ -21,18 +21,28 @@ confirmed by local packaging checks.
 
 ## Hardware and runtime compatibility
 
-The original README reports preliminary reception of source video on:
+On **2026-10-24** the owner tested actual Xiaomi cameras using the native
+Home Assistant Xiaomi Camera Native v0.3.8 buttons, **not go2rtc**. Screen
+recordings show the scene moving during PTZ button presses. Home Assistant's
+recorder logged the same native button entities at the corresponding times.
 
-| Camera | Model ID |
-| --- | --- |
-| Mi 360 Home Security Camera 2K | `chuangmi.camera.029a02` |
-| Xiaomi Smart Camera C200 | `chuangmi.camera.046c04` |
-| Xiaomi Smart Camera C301 | `mxiang.camera.c301` |
+| Camera | Verified model ID | Recording start (EEST) |
+| --- | --- | --- |
+| Mi 360 Home Security Camera 2K | `chuangmi.camera.029a02` | 21:55:21 |
+| Xiaomi Smart Camera C200 | `chuangmi.camera.046c04` | 21:48:09 |
+| Xiaomi Smart Camera C301 | `mxiang.camera.c301` | 22:05:16 |
 
-**Those are the project's documented observations, not new tests run while
-preparing this distribution.** Hardware PTZ operation, firmware support,
-audio, HomeKit end-to-end playback and multi-client performance are not
-guaranteed. See the main README's compatibility and limitations sections.
+Detailed timestamp evidence: [PTZ verification report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md).
+The video files were submitted by the hardware owner, not bundled in the
+public repository; they must be attached to the existing HACS PR for reviewer
+inspection. Firmware identifiers were not available in the HA device registry.
+Recorder events alone do not prove motor movement; the changes in the video
+provide that separate observation. This does not verify other firmware versions
+or provide a motor position/command acknowledgement.
+
+HACS and Hassfest CI check packaging/integration rules only, not motors.
+Audio, HomeKit end-to-end playback and multi-client performance remain
+unverified.
 
 ## Historical testing reference
 
