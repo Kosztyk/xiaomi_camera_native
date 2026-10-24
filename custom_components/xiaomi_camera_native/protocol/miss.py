@@ -13,8 +13,9 @@ from .cs2 import CS2Connection
 from .errors import ProtocolError, TransportError
 
 PAN_TILT_OPERATIONS = {"left": 1, "right": 2, "up": 3, "down": 4}
-# Modern motorized CS2 models targeted by this integration. The operation
-# command is hardware-verified upstream on 029a02; other firmware needs testing.
+# Exact models physically tested through Xiaomi Camera Native on 2026-10-24.
+# Home Assistant PTZ button events correlate with live-view movement videos.
+# See docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md. Do not add untested models.
 PAN_TILT_MODELS = frozenset(
     {"chuangmi.camera.029a02", "chuangmi.camera.046c04", "mxiang.camera.c301"}
 )

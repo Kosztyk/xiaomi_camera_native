@@ -1,0 +1,40 @@
+name: Publish Xiaomi Camera Native v0.3.9
+on:
+  workflow_run:
+    workflows:
+      - Validate Xiaomi Camera Native
+    types:
+      - completed
+permissions:
+  contents: write
+jobs:
+  publish:
+    name: Publish after successful main validation
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Publish verified source once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT="$(git ls-remote origin refs/heads/main | cut -f1)"
+          [[ "$CURRENT" == "$VALIDATED_SHA" ]] || exit 0
+          VERSION="$(python -c 'import json; print(json.load(open("custom_components/xiaomi_camera_native/manifest.json"))["version"])')"
+          [[ "$VERSION" == "0.3.9" ]] || exit 0
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release already exists"; exit 0
+          fi
+          gh release create "v$VERSION" \
+            --target "$VALIDATED_SHA" \
+            --title "Xiaomi Camera Native v$VERSION" \
+            --notes-file RELEASE_NOTES_0.3.9.md \
+            --latest

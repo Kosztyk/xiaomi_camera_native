@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.9 — HACS review fixes
+
+- Document physical PTZ tests through Xiaomi Camera Native's Python control
+  path on the three exactly whitelisted camera models (2026-10-24).
+- Preserve the three-model PTZ whitelist; enable no additional models.
+- Sync English translations to strings.json, restoring the auto_update_ip label.
+- Align frontend/diagnostics VERSION and manifest on 0.3.9.
+- Match root MIT license to bundled license with Kosztyk and Alexey Khit
+  attribution and preserve NOTICE.
+- Add static reviewer regression tests, and guarded release workflow.
+
+No changes to command payloads, streaming, authentication or IP recovery.
+
 ## 0.3.8 — HACS publication preparation
 
 - Add missing `documentation` and `issue_tracker` manifest fields.

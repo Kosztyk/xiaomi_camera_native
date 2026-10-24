@@ -1,4 +1,4 @@
-Xiaomi Camera Native 0.3.3
+Xiaomi Camera Native 0.3.9
 Copyright (c) 2026 Kosztyk
 
 This integration includes Python adaptations of Xiaomi protocol code from
@@ -33,3 +33,7 @@ The encrypted MISS 0x112 motor command and the need to reuse a live camera
 session are documented there, with a physical test on chuangmi.camera.029a02.
 The Python controls, HA button entities and lifecycle tests are part of this
 project. No ONVIF server or go2rtc runtime is included.
+
+The October 2026 physical Python-implementation PTZ checks are documented
+in docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md in this repository.
+The upstream go2rtc result remains a protocol reference only.

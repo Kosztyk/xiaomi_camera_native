@@ -39,8 +39,8 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
                 errors.append(f'Manifest missing: {", ".join(sorted(missing))}')
             if manifest.get('domain') != DOMAIN:
                 errors.append('Domain does not match component folder name')
-            if manifest.get('version') != '0.3.8':
-                errors.append('Manifest version must be 0.3.8 for this upgrade')
+            if manifest.get('version') != '0.3.9':
+                errors.append('Manifest version must be 0.3.9 for this upgrade')
             if not manifest.get('codeowners'):
                 errors.append('Manifest needs at least one codeowner')
             expected_order = ['domain', 'name'] + sorted(

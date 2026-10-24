@@ -6,7 +6,7 @@
 
 Xiaomi Camera Native connects to compatible Xiaomi cameras using a native Python implementation of **MISS over CS2**. Video travels over your local network, and the cameras appear as ordinary Home Assistant camera entities.
 
-> **Experimental integration.** Camera compatibility depends on the model and firmware. Initial source video reception has been observed on the three models listed below. Pan/tilt movement and the camera pop-up controls still need broader hardware and frontend validation. See [VALIDATION.md](VALIDATION.md) for the tested scope.
+> **Experimental integration.** Camera compatibility depends on model and firmware. On 24 October 2026, the owner provided live-view recordings showing PTZ movement through Home Assistant's **Xiaomi Camera Native** buttons for the three models listed below, correlated with Home Assistant recorder history. This is model-specific physical evidence; firmware variants remain untested. See [hardware evidence](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) and [VALIDATION.md](VALIDATION.md).
 
 ## Features
 
@@ -33,7 +33,7 @@ No go2rtc process, bridge container, add-on or Xiaomi native SDK is required by 
 
 Source video frames from all three models have been observed in an initial Home Assistant installation. This is not a guarantee for every firmware version or playback client.
 
-Pan/tilt buttons are implemented for these three models. The underlying motor command has been [tested upstream on the Mi 360 2K](https://github.com/AlexxIT/go2rtc/pull/2531); physical movement through this Python implementation remains to be verified across the target cameras.
+Pan/tilt buttons are limited to these **three physically observed models**. On 24 October 2026, the owner's Home Assistant recordings show the scene moving in response to the native Python integration's PTZ button events for all three models. The [test evidence](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) documents camera models, timestamps, directions and limitations. The separate [go2rtc experiment](https://github.com/AlexxIT/go2rtc/pull/2531) is only a protocol reference, not our hardware verification.
 
 Other modern MISS/CS2 cameras may work for video, but are not verified. **TUTK, Agora, MTP and legacy camera protocols are not supported.** Movement buttons are limited to the models listed above.
 
@@ -156,6 +156,10 @@ While video is running, movement commands reuse its encrypted MISS connection. I
 Overlapping presses are rejected instead of queued. Movement commands are not automatically replayed on a new connection after a failure, because the camera may already have moved.
 
 These controls perform discrete steps. Continuous movement, zoom, calibration, presets and position feedback are not implemented.
+
+### Physical motor verification (24 October 2026)
+
+The owner tested **Mi 360 2K / `chuangmi.camera.029a02`**, **C200 / `chuangmi.camera.046c04`**, and **C301 / `mxiang.camera.c301`** with Xiaomi Camera Native v0.3.8 on physical cameras. The screen recordings show changes in the camera scene alongside native `button.*` PTZ activations. The Home Assistant recorder independently logged matching left/right/up/down events. Review the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md); original videos need to be attached to [HACS PR #12439](https://github.com/hacs/default/pull/12439) for independent playback. These observations do not establish firmware-wide compatibility or a motor position acknowledgement.
 
 ## HomeKit
 
