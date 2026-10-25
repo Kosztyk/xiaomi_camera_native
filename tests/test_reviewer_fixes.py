@@ -25,8 +25,8 @@ class ReviewerTests(unittest.TestCase):
 
     def test_versions(self):
         manifest = json.loads((COMP / "manifest.json").read_text())
-        self.assertEqual(manifest["version"], "0.3.9")
-        self.assertIn('VERSION = "0.3.9"', (COMP / "const.py").read_text())
+        self.assertEqual(manifest["version"], "0.3.10")
+        self.assertIn('VERSION = "0.3.10"', (COMP / "const.py").read_text())
         self.assertIn('camera-controls.js?v={VERSION}', (COMP / "frontend.py").read_text())
 
     def test_license_and_test_evidence(self):

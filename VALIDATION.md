@@ -2,7 +2,7 @@
 
 This document distinguishes packaging checks from functional hardware testing.
 
-## Packaging validation (0.3.9)
+## Packaging validation (0.3.10)
 
 Run from the root of the repository:
 
@@ -12,8 +12,10 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q custom_components
 ```
 
-These local checks validate HACS layout, JSON metadata, bundled files and Python
-syntax; **they do not validate camera streaming, authentication or pan/tilt**.
+The seven local tests validate HACS layout, JSON metadata, bundled files,
+English translation parity, version/license consistency and the exact PTZ
+model allowlist. Compilation checks Python syntax. **These checks do not
+validate camera streaming, authentication or physical pan/tilt movement**.
 
 Once published to GitHub, review the results of the `HACS Validation` and
 `Hassfest Validation` jobs under GitHub Actions. Their result cannot be
@@ -33,9 +35,11 @@ recorder logged the same native button entities at the corresponding times.
 | Xiaomi Smart Camera C301 | `mxiang.camera.c301` | 22:05:16 |
 
 Detailed timestamp evidence: [PTZ verification report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md).
-The video files were submitted by the hardware owner, not bundled in the
-public repository; they must be attached to the existing HACS PR for reviewer
-inspection. Firmware identifiers were not available in the HA device registry.
+The three videos and report are publicly attached to the owner's
+[review reply on #12439](https://github.com/hacs/default/pull/12439#issuecomment-6388692080)
+and remain available after that PR was closed. Direct recording links are in
+the report. The tested motor command implementation is unchanged in v0.3.9
+and v0.3.10. Firmware identifiers were not available in the HA device registry.
 Recorder events alone do not prove motor movement; the changes in the video
 provide that separate observation. This does not verify other firmware versions
 or provide a motor position/command acknowledgement.
@@ -49,7 +53,8 @@ unverified.
 Earlier README revisions referred to 73 Python tests, 9 JavaScript DOM tests,
 and standalone test tools. Those historical test sources are **not present**
 in the published 0.3.7 repository and have not been reconstructed here.
-The new `tests/` folder contains **packaging checks only**.
+The current `tests/` folder contains **seven offline structural checks**, not
+the historical protocol, lifecycle or JavaScript test suites.
 
 ## Security and troubleshooting
 

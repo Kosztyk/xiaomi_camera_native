@@ -9,10 +9,19 @@ In each recording, viewpoint changes coincide with pressing the native PTZ
 controls. These observations were cross-checked against the Home Assistant
 recorder's timestamps for exactly those button entities.
 
-**Reviewer access to recordings:** The original MOV videos are not part of
-this source tree. The maintainer should attach compressed MP4 copies to
-[hacs/default PR #12439](https://github.com/hacs/default/pull/12439) before
-requesting review, so the visual evidence is independently accessible.
+**Reviewer access to recordings:** The three videos and this report were
+published in the owner's [review reply on hacs/default #12439](https://github.com/hacs/default/pull/12439#issuecomment-6388692080).
+They remain accessible after that PR was closed and are not bundled in the
+integration. The filenames below identify the original recordings; the public
+attachments can be played from the review reply or opened directly:
+
+- [Public recording 1](https://github.com/user-attachments/assets/ea4a2035-8e92-44c2-a356-e364d844d432)
+- [Public recording 2](https://github.com/user-attachments/assets/d5ae10c8-81c7-4bc4-a494-e16489dfb2ba)
+- [Public recording 3](https://github.com/user-attachments/assets/b33e9094-87dc-40de-b266-877d00eaf22c)
+
+The motor command implementation tested in v0.3.8 is unchanged in v0.3.9
+and v0.3.10. These are the original 24 October tests, not a claim of a new
+hardware test for each documentation release.
 
 ## Mi 360 Home Security Camera 2K (`chuangmi.camera.029a02`)
 
@@ -73,7 +82,7 @@ including a downward view of the floor.
 - The three cameras' firmware versions were unavailable in Home Assistant's
   device registry. No broader firmware or model compatibility is asserted.
 - No PTZ models outside these three are enabled.
-- Original video files must be available to the HACS reviewer to inspect.
+- The recordings are public at the links above for reviewer inspection.
 
 This is real-user, model-specific physical evidence for the three models
 already in `PAN_TILT_MODELS`, not simulated or mocked hardware validation.

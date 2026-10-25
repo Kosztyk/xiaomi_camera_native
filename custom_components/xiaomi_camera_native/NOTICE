@@ -1,4 +1,4 @@
-Xiaomi Camera Native 0.3.9
+Xiaomi Camera Native 0.3.10
 Copyright (c) 2026 Kosztyk
 
 This integration includes Python adaptations of Xiaomi protocol code from
@@ -17,8 +17,8 @@ Reference files:
 - pkg/xiaomi/miss/cs2/conn.go: LAN discovery, TCP framing, DRW sequencing and ACKs
 - pkg/xiaomi/miss/producer.go: video codec identifiers and timestamp interpretation
 
-The media muxer, Home Assistant integration, lifecycle code, diagnostic probe
-and tests are supplied as part of this project. go2rtc itself is not bundled
+The media muxer, Home Assistant integration, lifecycle code, diagnostics
+and offline structural tests are supplied as part of this project. go2rtc itself is not bundled
 or executed. No Xiaomi native SDK is bundled.
 
 Cryptographic vector references:
@@ -31,8 +31,8 @@ Pan/tilt protocol reference (operation 1=left, 2=right, 3=up, 4=down):
 https://github.com/AlexxIT/go2rtc/pull/2531
 The encrypted MISS 0x112 motor command and the need to reuse a live camera
 session are documented there, with a physical test on chuangmi.camera.029a02.
-The Python controls, HA button entities and lifecycle tests are part of this
-project. No ONVIF server or go2rtc runtime is included.
+The Python controls and HA button entities are part of this project.
+No ONVIF server or go2rtc runtime is included.
 
 The October 2026 physical Python-implementation PTZ checks are documented
 in docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md in this repository.

@@ -9,6 +9,7 @@ Addresses requested changes in [hacs/default #12439](https://github.com/hacs/def
 - Align root/bundled MIT license, preserving Kosztyk and Alexey Khit attribution.
 - Add regression checks for the reviewer issues.
 
-See [hardware verification](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md).
-The three screen recordings should be attached to HACS PR #12439.
+See [hardware verification](https://github.com/Kosztyk/xiaomi_camera_native/blob/v0.3.9/docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md).
+The three screen recordings were subsequently published in the
+[review reply on HACS PR #12439](https://github.com/hacs/default/pull/12439#issuecomment-6388692080).
 No camera protocol, authentication, video, or motor-command behavior changed.
