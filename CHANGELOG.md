@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.10 — HACS resubmission documentation
+
+- Link the three published PTZ recordings and review reply from the README,
+  validation document and hardware report; remove stale upload instructions.
+- Document the existing automatic camera IP recovery option and attributes.
+- Update HACS publishing guidance for the closed #12439 and its replacement.
+- Correct NOTICE and testing documentation to describe the seven shipped
+  structural checks without claiming absent protocol/lifecycle test suites.
+- Align manifest, runtime version, NOTICE, packaging checks and guarded release
+  workflow at 0.3.10; retain every v0.3.9 review fix.
+
+The tested motor implementation and three-model PTZ allowlist are unchanged.
+No streaming, authentication, command payload or IP recovery behavior changed.
+
 ## 0.3.9 — HACS review fixes
 
 - Document physical PTZ tests through Xiaomi Camera Native's Python control

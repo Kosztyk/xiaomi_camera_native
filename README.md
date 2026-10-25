@@ -103,6 +103,7 @@ Open **Settings → Devices & services → Xiaomi Camera Native → Options → 
 | Option | Default | Purpose |
 | --- | --- | --- |
 | Camera IPv4 address | Discovered address | Local address used to connect to the camera. |
+| Automatically update camera IP | Enabled | Recover a changed address from matching router trackers or Xiaomi cloud discovery, and save it after a successful connection. |
 | CS2 transport | Automatic | Accept the camera's negotiated UDP or TCP transport; manual choices are also available. |
 | Camera quality | HD; Automatic for C301 | Select the camera's own stream quality. |
 | Video output | H.264 | Convert to H.264, or preserve the original encoded video. |
@@ -159,7 +160,7 @@ These controls perform discrete steps. Continuous movement, zoom, calibration, p
 
 ### Physical motor verification (24 October 2026)
 
-The owner tested **Mi 360 2K / `chuangmi.camera.029a02`**, **C200 / `chuangmi.camera.046c04`**, and **C301 / `mxiang.camera.c301`** with Xiaomi Camera Native v0.3.8 on physical cameras. The screen recordings show changes in the camera scene alongside native `button.*` PTZ activations. The Home Assistant recorder independently logged matching left/right/up/down events. Review the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md); original videos need to be attached to [HACS PR #12439](https://github.com/hacs/default/pull/12439) for independent playback. These observations do not establish firmware-wide compatibility or a motor position acknowledgement.
+The owner tested **Mi 360 2K / `chuangmi.camera.029a02`**, **C200 / `chuangmi.camera.046c04`**, and **C301 / `mxiang.camera.c301`** with Xiaomi Camera Native v0.3.8 on physical cameras. The screen recordings show changes in the camera scene alongside native `button.*` PTZ activations. The Home Assistant recorder independently logged matching left/right/up/down events. Review the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) and the [three published recordings](https://github.com/hacs/default/pull/12439#issuecomment-6388692080). The motor command implementation is unchanged in v0.3.9 and v0.3.10. These observations do not establish firmware-wide compatibility or a motor position acknowledgement.
 
 ## HomeKit
 
@@ -198,6 +199,10 @@ Camera attributes include:
 | `last_error` | Latest video-session error. |
 | `pan_tilt_supported` | Whether controls are implemented for the model. |
 | `last_ptz_error` | Latest movement-command error. |
+| `ip_address` | Current local camera address. |
+| `auto_update_ip` | Whether automatic address recovery is enabled. |
+| `address_source` | Configured address, matching router tracker, or Xiaomi cloud discovery. |
+| `address_updates` | Number of address changes accepted after a successful connection. |
 
 `idle` is normal when nobody is watching. A nonzero source frame count confirms video reception, but does not by itself prove that a browser decoded the output.
 
@@ -241,8 +246,9 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q custom_components
 ```
 
-These commands check package metadata and Python syntax. The bundled
-tests are **packaging tests only**; they are not a substitute for camera
+These commands check package metadata, translation/version/license consistency,
+the exact PTZ model allowlist and Python syntax. The seven bundled tests are
+**offline structural checks**; they are not a substitute for camera
 integration or on-device testing. Remote GitHub Actions run HACS and
 Hassfest validations after you push the repository.
 
