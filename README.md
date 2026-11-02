@@ -56,8 +56,6 @@ The documented minimum baseline is **Home Assistant 2025.3.0**. Initial live str
 4. Find **Xiaomi Camera Native** in HACS and install it.
 5. Restart Home Assistant; then add it from **Settings → Devices & services**.
 
-Until the HACS default-catalog PR is accepted, the Custom repositories
-step is required. After acceptance, the integration can be found by search.
 
 ### Manual installation
 
