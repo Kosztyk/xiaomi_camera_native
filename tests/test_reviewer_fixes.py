@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMP = ROOT / "custom_components/xiaomi_camera_native"
-MODELS = {"chuangmi.camera.029a02", "chuangmi.camera.046c04", "mxiang.camera.c301"}
+MODELS = {"chuangmi.camera.029a02", "chuangmi.camera.ip029a", "chuangmi.camera.046c04", "mxiang.camera.c301"}
 
 class ReviewerTests(unittest.TestCase):
     def test_pan_tilt_allowlist_matches_verified_models(self):
@@ -25,9 +25,13 @@ class ReviewerTests(unittest.TestCase):
 
     def test_versions(self):
         manifest = json.loads((COMP / "manifest.json").read_text())
-        self.assertEqual(manifest["version"], "0.3.10")
-        self.assertIn('VERSION = "0.3.10"', (COMP / "const.py").read_text())
+        self.assertEqual(manifest["version"], "0.3.13")
+        self.assertIn('VERSION = "0.3.13"', (COMP / "const.py").read_text())
         self.assertIn('camera-controls.js?v={VERSION}', (COMP / "frontend.py").read_text())
+        workflow = (ROOT / ".github/workflows/release.yml").read_text()
+        self.assertIn('[[ "$VERSION" == "0.3.13" ]]', workflow)
+        self.assertIn('RELEASE_NOTES_0.3.13.md', workflow)
+        self.assertIn("Xiaomi Camera Native 0.3.13", (COMP / "NOTICE").read_text())
 
     def test_license_and_test_evidence(self):
         root_license = (ROOT / "License").read_text()
@@ -35,7 +39,11 @@ class ReviewerTests(unittest.TestCase):
         self.assertIn("Copyright (c) 2026 Kosztyk", root_license)
         self.assertIn("Copyright (c) 2022 Alexey Khit", root_license)
         report = (ROOT / "docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md").read_text()
-        for model in MODELS: self.assertIn(model, report)
+        for model in MODELS - {"chuangmi.camera.ip029a"}:
+            self.assertIn(model, report)
+        ip029a_report = (ROOT / "docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md").read_text()
+        self.assertIn("chuangmi.camera.ip029a", ip029a_report)
+        self.assertIn("one camera", ip029a_report.lower())
 
 if __name__ == "__main__":
     unittest.main()

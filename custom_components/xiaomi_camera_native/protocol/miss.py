@@ -13,12 +13,29 @@ from .cs2 import CS2Connection
 from .errors import ProtocolError, TransportError
 
 PAN_TILT_OPERATIONS = {"left": 1, "right": 2, "up": 3, "down": 4}
-# Exact models physically tested through Xiaomi Camera Native on 2026-10-24.
-# Home Assistant PTZ button events correlate with live-view movement videos.
-# See docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md. Do not add untested models.
+# Models with physical PTZ evidence using Xiaomi Camera Native's native MISS controls:
+# three owner-recorded tests (2026-10-24) and one independent user report (2026-11-12).
+# The ip029a report confirms left/right/up/down on ONE camera and streaming on TWO.
+# See docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md and
+# docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md.
 PAN_TILT_MODELS = frozenset(
-    {"chuangmi.camera.029a02", "chuangmi.camera.046c04", "mxiang.camera.c301"}
+    {
+        "chuangmi.camera.029a02",
+        "chuangmi.camera.ip029a",
+        "chuangmi.camera.046c04",
+        "mxiang.camera.c301",
+    }
 )
+# No unverified models are currently enabled for opt-in PTZ experiments.
+# Keep this separate mechanism for any explicitly authorized future field tests.
+EXPERIMENTAL_PAN_TILT_MODELS = frozenset()
+
+
+def pan_tilt_supported(model: str, *, experimental_enabled: bool = False) -> bool:
+    """Allow verified PTZ by default; require explicit opt-in for field-test models."""
+    return model in PAN_TILT_MODELS or (
+        experimental_enabled is True and model in EXPERIMENTAL_PAN_TILT_MODELS
+    )
 
 
 @dataclass(frozen=True)

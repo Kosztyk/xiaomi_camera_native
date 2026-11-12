@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.3.13 — safe device removal after Rediscover
+
+- Automatically prune device- and entity-registry records for Xiaomi cameras
+  deselected in Rediscover once the remaining camera platforms have loaded.
+  This also cleans up already-orphaned records after restart/reload.
+- Implement `async_remove_config_entry_device` to permit deleting an orphaned
+  camera from the Home Assistant device page. Active/selected cameras and
+  devices belonging to other integration entries cannot be removed this way.
+- Remove saved profiles for deselected cameras so re-adding them starts with
+  clean defaults. Preserve the other cameras' profiles.
+- Add offline regression tests for active-camera protection, orphan removal,
+  foreign/shared-device protection, PTZ entity cleanup and repeat cleanup.
+- No changes to Xiaomi transport, provisioning, stream handling or PTZ commands.
+
+
+## 0.3.12 — `ip029a` PTZ promoted after hardware test
+
+- Promote `chuangmi.camera.ip029a` into the verified PTZ model allowlist.
+  All four step buttons are now available without the prior experimental switch.
+- Record owner-reported physical left/right/up/down movement on **one**
+  `ip029a` camera, confirmed working repeatedly on v0.3.11, plus video on
+  two same-model cameras using China (`cn`) region (HA 2026.11.1).
+- Keep saved experimental-option profiles compatible, while hiding the
+  opt-in control for the now-verified model. No other models gain access.
+- Add evidence and updated offline regression tests. Keep streaming and
+  MISS `0x112` motor command implementations unchanged.
+
+## 0.3.11 — experimental Chinese `chuangmi.camera.ip029a` support
+
+- Recognize the Chinese Xiaomi Smart Camera PTZ Version 2K model ID.
+- Expose native PTZ step buttons for this model **only after explicit opt-in**
+  in its camera options. Default is disabled and verified models are unchanged.
+- Keep MISS 0x112 motor commands, CS2 transport, stream decoding and Xiaomi
+  cloud provisioning unchanged; streaming/PTZ remain unverified on ip029a.
+- Add a diagnostic flag, English UI strings, compatibility instructions,
+  regression checks, and align packaging/release metadata with 0.3.11.
+
+
 ## 0.3.10 — HACS resubmission documentation
 
 - Link the three published PTZ recordings and review reply from the README,

@@ -6,7 +6,7 @@
 
 Xiaomi Camera Native connects to compatible Xiaomi cameras using a native Python implementation of **MISS over CS2**. Video travels over your local network, and the cameras appear as ordinary Home Assistant camera entities.
 
-> **Experimental integration.** Camera compatibility depends on model and firmware. On 24 October 2026, the owner provided live-view recordings showing PTZ movement through Home Assistant's **Xiaomi Camera Native** buttons for the three models listed below, correlated with Home Assistant recorder history. This is model-specific physical evidence; firmware variants remain untested. See [hardware evidence](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) and [VALIDATION.md](VALIDATION.md).
+> **Experimental integration.** Camera compatibility depends on model and firmware. Three models were verified by the owner's October 2026 live-view recordings and recorder events. On 12 November 2026, an `ip029a` owner separately reported physical movement in all four directions on one camera using v0.3.11. This is model-specific evidence, not verification of every firmware revision. See the [October recordings](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md), the [November user report](docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md) and [VALIDATION.md](VALIDATION.md).
 
 ## Features
 
@@ -28,14 +28,13 @@ No go2rtc process, bridge container, add-on or Xiaomi native SDK is required by 
 | Camera | Model | Default camera quality |
 | --- | --- | --- |
 | Mi 360 Home Security Camera 2K | `chuangmi.camera.029a02` | HD, quality 2 |
+| Xiaomi Smart Camera PTZ Version 2K (China) | `chuangmi.camera.ip029a` | HD, quality 2 |
 | Xiaomi Smart Camera C200 | `chuangmi.camera.046c04` | HD, quality 3 |
 | Xiaomi Smart Camera C301 | `mxiang.camera.c301` | Automatic, quality 0 |
 
-Source video frames from all three models have been observed in an initial Home Assistant installation. This is not a guarantee for every firmware version or playback client.
+The **four models in this table** have evidence of physical PTZ operation through Xiaomi Camera Native, with different verification sources. The first three were verified through [owner screen recordings on 24 October 2026](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md). For `chuangmi.camera.ip029a`, a separate user confirmed on 12 November 2026 that video and all four PTZ directions worked physically on **one camera** with the integration-only v0.3.11 package; streaming was also confirmed on a **second camera**, but its PTZ was not tested. See the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md).
 
-Pan/tilt buttons are limited to these **three physically observed models**. On 24 October 2026, the owner's Home Assistant recordings show the scene moving in response to the native Python integration's PTZ button events for all three models. The [test evidence](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) documents camera models, timestamps, directions and limitations. The separate [go2rtc experiment](https://github.com/AlexxIT/go2rtc/pull/2531) is only a protocol reference, not our hardware verification.
-
-Other modern MISS/CS2 cameras may work for video, but are not verified. **TUTK, Agora, MTP and legacy camera protocols are not supported.** Movement buttons are limited to the models listed above.
+**Pan/tilt buttons are enabled by default for all four listed models**, including `ip029a`; no experimental opt-in is required. The existing encrypted MISS `0x112` step command is used without modifications. Firmware and hardware revisions beyond the reported devices remain unverified. Other modern MISS/CS2 models may work for video, but have no PTZ buttons unless separately validated. **TUTK, Agora, MTP and legacy protocols are not supported.**
 
 ## Requirements
 
@@ -74,6 +73,22 @@ The documented minimum baseline is **Home Assistant 2025.3.0**. Initial live str
 8. Refresh your browser after setup so the camera pop-up controls can load. Use a hard refresh if necessary, or fully close and reopen the Home Assistant Companion app.
 
 No YAML configuration or manual dashboard resource registration is required.
+
+### Remove a camera / Rediscover
+
+Open **Settings → Devices & services → Xiaomi Camera Native → Configure →
+Rediscover**, then **deselect** any cameras you no longer want and save.
+The integration reloads with the selected cameras and removes the deselected
+camera's Home Assistant device record and its camera/PTZ entity records.
+Previous camera-specific streaming/PTZ options for removed cameras are also cleared.
+
+The cleanup also runs after a successful integration restart/reload, fixing
+empty camera devices left behind by older releases (for example, "Outdoor Garage").
+If an orphan remains, open its device page and choose **Delete device**:
+v0.3.13 supports deletion of orphaned Xiaomi camera devices. A **currently
+selected** camera cannot be deleted that way; deselect it in Rediscover first.
+A camera still visible in the Mi Home account may appear in the Rediscover list,
+but will not be re-added until explicitly selected.
 
 ### Account and region
 
@@ -156,9 +171,19 @@ Overlapping presses are rejected instead of queued. Movement commands are not au
 
 These controls perform discrete steps. Continuous movement, zoom, calibration, presets and position feedback are not implemented.
 
+### Chinese `ip029a` model — verified PTZ support (12 November 2026)
+
+1. Sign in to the Xiaomi account region where the camera is registered (the reported test used **China, `cn`**).
+2. Choose `chuangmi.camera.ip029a`. The four PTZ `button.*` entities are created automatically; **there is no experimental pan/tilt switch to enable** since v0.3.12.
+3. To match the tested playback setup, begin with **CS2 transport: Automatic** (the confirmed negotiated transport was UDP) and **Video output: H.264**. The tested source codec was **H.265**.
+4. Open the native camera entity and try single movement presses in a clear, safe area. The buttons send discrete steps; no calibration, presets or position feedback are implemented.
+5. If a camera revision behaves differently, report the model, firmware, region, transport, playback and physical PTZ result, along with sanitized `pan_tilt_supported` and `last_ptz_error` diagnostics. Do not post Xiaomi credentials or camera keys.
+
+**Scope of evidence:** One `ip029a` camera was physically tested for left, right, up and down movement on integration v0.3.11 with Home Assistant 2026.11.1. A second `ip029a` camera streamed successfully but its motors were not tested. This is a user report, not a video recording independently reviewed by maintainers. [Full report](docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md).
+
 ### Physical motor verification (24 October 2026)
 
-The owner tested **Mi 360 2K / `chuangmi.camera.029a02`**, **C200 / `chuangmi.camera.046c04`**, and **C301 / `mxiang.camera.c301`** with Xiaomi Camera Native v0.3.8 on physical cameras. The screen recordings show changes in the camera scene alongside native `button.*` PTZ activations. The Home Assistant recorder independently logged matching left/right/up/down events. Review the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) and the [three published recordings](https://github.com/hacs/default/pull/12439#issuecomment-6388692080). The motor command implementation is unchanged in v0.3.9 and v0.3.10. These observations do not establish firmware-wide compatibility or a motor position acknowledgement.
+The owner tested **Mi 360 2K / `chuangmi.camera.029a02`**, **C200 / `chuangmi.camera.046c04`**, and **C301 / `mxiang.camera.c301`** with Xiaomi Camera Native v0.3.8 on physical cameras. The screen recordings show changes in the camera scene alongside native `button.*` PTZ activations. The Home Assistant recorder independently logged matching left/right/up/down events. Review the [model-specific report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) and the [three published recordings](https://github.com/hacs/default/pull/12439#issuecomment-6388692080). The motor command implementation remains unchanged through v0.3.13. These observations do not establish firmware-wide compatibility or a motor position acknowledgement.
 
 ## HomeKit
 
@@ -195,7 +220,8 @@ Camera attributes include:
 | `frames_received` | Decrypted source frame count. |
 | `reconnects` | Reconnection attempts. |
 | `last_error` | Latest video-session error. |
-| `pan_tilt_supported` | Whether controls are implemented for the model. |
+| `pan_tilt_supported` | Whether the four buttons are enabled for this camera. |
+| `pan_tilt_experimental` | True only for a separately allowed unverified PTZ test model. Always false for `ip029a` since v0.3.12; retained for compatibility. |
 | `last_ptz_error` | Latest movement-command error. |
 | `ip_address` | Current local camera address. |
 | `auto_update_ip` | Whether automatic address recovery is enabled. |
@@ -245,7 +271,7 @@ python3 -m compileall -q custom_components
 ```
 
 These commands check package metadata, translation/version/license consistency,
-the exact PTZ model allowlist and Python syntax. The seven bundled tests are
+the four-model verified PTZ allowlist, absence of experimental models and Python syntax. The bundled tests are
 **offline structural checks**; they are not a substitute for camera
 integration or on-device testing. Remote GitHub Actions run HACS and
 Hassfest validations after you push the repository.

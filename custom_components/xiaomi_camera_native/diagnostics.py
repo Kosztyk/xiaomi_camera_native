@@ -26,6 +26,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 "encoder_dropped_frames": session.encoder_dropped_frames,
                 "last_error": session.last_error,
                 "pan_tilt_supported": session.supports_pan_tilt,
+                "pan_tilt_experimental": session.pan_tilt_experimental,
                 "last_ptz_error": session.last_ptz_error,
                 "ip_address": session.host,
                 "auto_update_ip": session.options.auto_update_ip,

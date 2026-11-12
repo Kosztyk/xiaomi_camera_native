@@ -91,6 +91,7 @@ class NativeXiaomiCamera(Camera):
             "encoder_dropped_frames": session.encoder_dropped_frames,
             "last_error": session.last_error,
             "pan_tilt_supported": session.supports_pan_tilt,
+            "pan_tilt_experimental": session.pan_tilt_experimental,
             "last_ptz_error": session.last_ptz_error,
             "fast_snapshot_enabled": self._fast_snapshot_enabled,
             "last_snapshot_error": self._last_snapshot_error,

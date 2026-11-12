@@ -16,7 +16,7 @@ from .address import CameraAddressResolver
 from .cloud import CameraDevice, XiaomiCloud
 from .errors import AuthenticationError, ProtocolError, TransportError, XiaomiError
 from .media import MpegTsMuxer, MuxedVideo
-from .miss import PAN_TILT_MODELS, PAN_TILT_OPERATIONS, MissClient
+from .miss import EXPERIMENTAL_PAN_TILT_MODELS, PAN_TILT_OPERATIONS, MissClient, pan_tilt_supported
 from .startup import H264StartupCache
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ class StreamOptions:
     video_mode: str = "h264"
     height: int = 720
     idle_timeout: int = 30
+    experimental_pan_tilt: bool = False
 
     @classmethod
     def from_profile(cls, profile: Mapping[str, Any]) -> StreamOptions:
@@ -125,7 +126,16 @@ class CameraSession:
 
     @property
     def supports_pan_tilt(self) -> bool:
-        return self.device.model in PAN_TILT_MODELS
+        return pan_tilt_supported(
+            self.device.model, experimental_enabled=self.options.experimental_pan_tilt
+        )
+
+    @property
+    def pan_tilt_experimental(self) -> bool:
+        return (
+            self.device.model in EXPERIMENTAL_PAN_TILT_MODELS
+            and self.options.experimental_pan_tilt is True
+        )
 
     async def _address_candidates(self) -> AsyncIterator[tuple[str, str]]:
         resolver = self.address_resolver if self.options.auto_update_ip else None

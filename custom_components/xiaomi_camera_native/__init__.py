@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from aiohttp import DummyCookieJar
@@ -12,9 +13,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import CONF_DEVICES, CONF_PROFILES, CONF_REGION
+from .const import CONF_DEVICES, CONF_PROFILES, CONF_REGION, DOMAIN
 from .frontend import async_register_frontend
 from .protocol.address import CameraAddressResolver, router_addresses
 from .protocol.cloud import CameraDevice, XiaomiCloud
@@ -22,6 +24,7 @@ from .protocol.errors import AuthenticationError, CloudError
 from .protocol.session import CameraSession, LoopbackServer, StreamOptions
 
 PLATFORMS = [Platform.CAMERA, Platform.BUTTON]
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -110,6 +113,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_register_frontend(hass)
         entry.runtime_data = RuntimeData(cloud, server, sessions, known_data, known_options)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        # Only reconcile stale registry devices after the new platforms load.
+        # A camera deselected in Rediscover must not leave an empty device.
+        try:
+            _cleanup_removed_camera_devices(hass, entry)
+        except Exception:
+            # A registry cleanup error must never bring down working streams.
+            _LOGGER.exception("Failed to reconcile removed Xiaomi camera devices")
     except BaseException:
         await server.close()
         raise
@@ -136,3 +146,57 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await entry.runtime_data.server.close()
         return True
     return False
+
+
+def _configured_camera_ids(entry: ConfigEntry) -> set[str]:
+    """IDs deliberately selected for this Xiaomi account, not cloud discoveries."""
+    return {raw["did"] for raw in entry.data.get(CONF_DEVICES, ())}
+
+
+def _is_removed_camera_device(entry: ConfigEntry, device: dr.DeviceEntry) -> bool:
+    """Recognize only *our* previously selected cameras, never active devices."""
+    owners = getattr(device, "config_entries", None)
+    if owners is not None:
+        if set(owners) != {entry.entry_id}:
+            # Refuse shared devices and devices owned by other entries.
+            return False
+    elif getattr(device, "config_entry_id", None) != entry.entry_id:
+        return False
+    ids = {identifier for domain, identifier in device.identifiers if domain == DOMAIN}
+    return bool(ids) and ids.isdisjoint(_configured_camera_ids(entry))
+
+
+def _remove_camera_entities(hass: HomeAssistant, entry: ConfigEntry, device_id: str) -> None:
+    """Forget removed camera and PTZ entities, including disabled entries."""
+    registry = er.async_get(hass)
+    for entity in er.async_entries_for_device(
+        registry, device_id, include_disabled_entities=True
+    ):
+        if entity.config_entry_id == entry.entry_id and entity.platform == DOMAIN:
+            registry.async_remove(entity.entity_id)
+
+
+def _cleanup_removed_camera_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Prune stale device records after a successful setup/reload/Rediscover."""
+    registry = dr.async_get(hass)
+    for device in tuple(dr.async_entries_for_config_entry(registry, entry.entry_id)):
+        if not _is_removed_camera_device(entry, device):
+            continue
+        _remove_camera_entities(hass, entry, device.id)
+        if registry.async_get(device.id) is not None:
+            registry.async_remove_device(device.id)
+        _LOGGER.debug("Removed orphaned Xiaomi camera device %s", device.id)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deletion of orphaned cameras, but never a selected/live camera.
+
+    Use Rediscover to deselect an active camera first. Core removes the
+    registry device itself after this handler approves the removal.
+    """
+    if not _is_removed_camera_device(entry, device_entry):
+        return False
+    _remove_camera_entities(hass, entry, device_entry.id)
+    return True

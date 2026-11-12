@@ -83,7 +83,7 @@
       },
       "profile": {
         "title": "Configure {camera}",
-        "description": "Automatically recover a changed IP from matching Home Assistant router trackers or Xiaomi discovery. Turn automatic updates off to keep a fixed IP. H.264 uses FFmpeg; the height setting applies to H.264 only.",
+        "description": "Automatically recover a changed IP from matching Home Assistant router trackers or Xiaomi discovery. Turn automatic updates off to keep a fixed IP. H.264 uses FFmpeg; the height setting applies to H.264 only. PTZ buttons are enabled automatically for hardware-verified models; other models have no PTZ controls unless explicitly designated for field testing.",
         "data": {
           "host": "Camera IPv4 address",
           "transport": "CS2 transport",
@@ -91,7 +91,8 @@
           "video_mode": "Video output",
           "height": "Maximum H.264 height",
           "idle_timeout": "Disconnect after no viewers (seconds)",
-          "auto_update_ip": "Automatically update camera IP"
+          "auto_update_ip": "Automatically update camera IP",
+          "experimental_pan_tilt": "Enable experimental pan/tilt (unverified model)"
         }
       },
       "rediscover": {

@@ -17,6 +17,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .const import CONF_DEVICES, CONF_PASS_TOKEN, CONF_PROFILES, CONF_REGION, CONF_USER_ID, DOMAIN
 from .protocol.cloud import REGIONS, CameraDevice, XiaomiCloud
 from .protocol.errors import AuthenticationError, CloudError, LoginChallenge
+from .protocol.miss import EXPERIMENTAL_PAN_TILT_MODELS
 from .protocol.session import H264_HEIGHTS, StreamOptions, parse_h264_height
 
 
@@ -277,39 +278,44 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
                         },
                     },
                 )
+        fields = {
+            vol.Optional("host", default=current["host"]): str,
+            vol.Required("auto_update_ip", default=current["auto_update_ip"]): bool,
+            vol.Required("transport", default=current["transport"]): vol.In(
+                {"auto": "Automatic", "udp": "UDP", "tcp": "TCP"}
+            ),
+            vol.Required("quality", default=current["quality"]): vol.In(
+                {
+                    "hd": "HD (model default)",
+                    "sd": "SD",
+                    "auto": "Automatic",
+                    "2": "Quality 2",
+                    "3": "Quality 3",
+                    "4": "Quality 4",
+                    "5": "Quality 5",
+                }
+            ),
+            vol.Required("video_mode", default=current["video_mode"]): vol.In(
+                {"h264": "H.264 (FFmpeg)", "original": "Original (no transcoding)"}
+            ),
+            vol.Required("height", default=str(current["height"])): vol.In(
+                {str(height): label for height, label in H264_HEIGHTS.items()}
+            ),
+            vol.Required("idle_timeout", default=current["idle_timeout"]): vol.All(
+                vol.Coerce(int), vol.Range(min=10, max=300)
+            ),
+        }
+        # Only offer experimental PTZ for explicitly allowed unverified models.
+        # ip029a is hardware-verified as of v0.3.12, so no opt-in is shown.
+        if device["model"] in EXPERIMENTAL_PAN_TILT_MODELS:
+            fields[
+                vol.Required("experimental_pan_tilt", default=current["experimental_pan_tilt"])
+            ] = bool
         return self.async_show_form(
             step_id="profile",
             errors=errors,
             description_placeholders={"camera": device["name"]},
-            data_schema=vol.Schema(
-                {
-                    vol.Optional("host", default=current["host"]): str,
-                    vol.Required("auto_update_ip", default=current["auto_update_ip"]): bool,
-                    vol.Required("transport", default=current["transport"]): vol.In(
-                        {"auto": "Automatic", "udp": "UDP", "tcp": "TCP"}
-                    ),
-                    vol.Required("quality", default=current["quality"]): vol.In(
-                        {
-                            "hd": "HD (model default)",
-                            "sd": "SD",
-                            "auto": "Automatic",
-                            "2": "Quality 2",
-                            "3": "Quality 3",
-                            "4": "Quality 4",
-                            "5": "Quality 5",
-                        }
-                    ),
-                    vol.Required("video_mode", default=current["video_mode"]): vol.In(
-                        {"h264": "H.264 (FFmpeg)", "original": "Original (no transcoding)"}
-                    ),
-                    vol.Required("height", default=str(current["height"])): vol.In(
-                        {str(height): label for height, label in H264_HEIGHTS.items()}
-                    ),
-                    vol.Required("idle_timeout", default=current["idle_timeout"]): vol.All(
-                        vol.Coerce(int), vol.Range(min=10, max=300)
-                    ),
-                }
-            ),
+            data_schema=vol.Schema(fields),
         )
 
     async def async_step_rediscover(self, user_input: dict[str, Any] | None = None):
@@ -346,6 +352,13 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
                     title="",
                     data={
                         **self.config_entry.options,
+                        # Removed cameras must not retain hidden stream/PTZ
+                        # profiles if they are later rediscovered and re-added.
+                        CONF_PROFILES: {
+                            did: profile
+                            for did, profile in self.config_entry.options.get(CONF_PROFILES, {}).items()
+                            if did in selected
+                        },
                         "discovery_revision": self.config_entry.options.get("discovery_revision", 0)
                         + 1,
                     },
