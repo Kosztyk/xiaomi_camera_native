@@ -191,6 +191,27 @@ class DeviceCleanupTests(unittest.TestCase):
         self.entry.data["devices"] = [{"did": "new"}]
         self.assertTrue(self.policy["_is_removed_camera_device"](self.entry, old_device))
 
+    def test_current_registry_uses_single_owner_without_deprecated_property(self):
+        class CurrentDevice:
+            config_entry_id = "account-a"
+            identifiers = {(DOMAIN, "removed")}
+            is_composite_device = False
+
+            @property
+            def config_entries(self):
+                raise AssertionError("Deprecated API was accessed")
+
+        device = CurrentDevice()
+        removed = self.policy["_is_removed_camera_device"]
+        self.assertTrue(removed(self.entry, device))
+        device.is_composite_device = True
+        self.assertFalse(removed(self.entry, device))
+        device.is_composite_device = False
+        device.config_entry_id = "account-b"
+        self.assertFalse(removed(self.entry, device))
+        device.config_entry_id = None
+        self.assertFalse(removed(self.entry, device))
+
     def test_reconcile_wired_after_successful_entity_setup(self):
         code = SOURCE.read_text()
         self.assertIn("await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)\n        # Only reconcile", code)

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Xiaomi Camera Native",
-        "description": "Experimental direct MISS/CS2 camera streaming. Sign in to the same region used in Mi Home.",
+        "description": "Stream compatible Xiaomi cameras over your local network. Sign in to the same region used in Mi Home.",
         "menu_options": {
           "login": "Sign in with Xiaomi account",
           "token": "Use an existing Mi Home account credential"
@@ -44,7 +44,7 @@
       },
       "cameras": {
         "title": "Select cameras",
-        "description": "CS2 cameras are supported in this experimental release. If a camera has no local IP, set it in the integration's camera options before opening live view.",
+        "description": "Select compatible CS2 cameras or the IMILAB ipc020. Enable the TUTK LAN option for ipc020 after setup. Set a local IPv4 address in camera options if discovery did not find one.",
         "data": {
           "cameras": "Cameras"
         }
@@ -83,7 +83,7 @@
       },
       "profile": {
         "title": "Configure {camera}",
-        "description": "Automatically recover a changed IP from matching Home Assistant router trackers or Xiaomi discovery. Turn automatic updates off to keep a fixed IP. H.264 uses FFmpeg; the height setting applies to H.264 only. PTZ buttons are enabled automatically for hardware-verified models; other models have no PTZ controls unless explicitly designated for field testing.",
+        "description": "Automatically recover a changed IP from matching Home Assistant router trackers or Xiaomi discovery. Turn automatic updates off to keep a fixed IP. H.264 uses FFmpeg; the height setting applies to H.264 only. The verified CS2 models have four pan and tilt buttons. For ipc020, enable TUTK LAN to stream. You can also enable horizontal pan, which becomes available after the current live stream receives video.",
         "data": {
           "host": "Camera IPv4 address",
           "transport": "CS2 transport",
@@ -92,7 +92,8 @@
           "height": "Maximum H.264 height",
           "idle_timeout": "Disconnect after no viewers (seconds)",
           "auto_update_ip": "Automatically update camera IP",
-          "experimental_pan_tilt": "Enable experimental pan/tilt (unverified model)"
+          "experimental_pan_tilt": "Enable horizontal pan (ipc020)",
+          "experimental_legacy_tutk": "Use TUTK LAN transport (ipc020)"
         }
       },
       "rediscover": {

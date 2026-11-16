@@ -93,6 +93,18 @@ class Provisioning:
     vendor: str
 
 
+@dataclass(repr=False)
+class LegacyProvisioning:
+    """Transient legacy P2P secrets. Never persist or serialize this object."""
+    uid: str
+    auth_mode: str
+    password: str = ""
+    public: bytes = b""
+    private: bytes = b""
+    device_public: bytes = b""
+    sign: str = ""
+
+
 class XiaomiCloud:
     """One account and one cloud region. HTTP sessions are injected."""
 
@@ -372,12 +384,13 @@ class XiaomiCloud:
         await self._finish_auth(str(result["location"]))
 
     async def request(self, path: str, params: dict[str, Any], *, retry: bool = True) -> Any:
-        if not self.credentials.service_token:
+        async with self._refresh_lock:
+            creds = self.credentials
+        if not creds.service_token:
             raise AuthenticationError("Xiaomi account is not authenticated")
         body, signed = encrypt_cloud_request(
-            self.credentials.security, path, json.dumps(params, separators=(",", ":"))
+            creds.security, path, json.dumps(params, separators=(",", ":"))
         )
-        creds = self.credentials
         try:
             async with self.session.post(
                 self.base_url + path,
@@ -389,6 +402,7 @@ class XiaomiCloud:
                 },
                 headers={"MIOT-ENCRYPT-ALGORITHM": "ENCRYPT-RC4", "Accept-Encoding": "identity"},
                 timeout=TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 if response.status in (401, 403):
                     result = {"code": -10001}
@@ -414,12 +428,17 @@ class XiaomiCloud:
         if code in {-10001, -10000, -10004, 3}:
             if retry:
                 async with self._refresh_lock:
-                    await self.login_with_token(creds.user_id, creds.pass_token)
+                    if self.credentials is creds:
+                        # Keep the current credentials readable until login completes.
+                        refreshed = XiaomiCloud(self.session, self.region)
+                        await refreshed.login_with_token(creds.user_id, creds.pass_token)
+                        self.credentials = refreshed.credentials
                 return await self.request(path, params, retry=False)
             raise AuthenticationError("Xiaomi account needs to be authenticated again")
         if code != 0:
             raise CloudError(
-                f"Xiaomi cloud rejected the request (code {code if isinstance(code, int) else 'unknown'})"
+                f"Xiaomi cloud rejected the request (code {code if isinstance(code, int) else 'unknown'})",
+                code=code if isinstance(code, int) else None,
             )
         return result.get("result")
 
@@ -447,6 +466,78 @@ class XiaomiCloud:
                 return list(devices.values())
             start = next_start
         raise CloudError("Xiaomi device list pagination limit exceeded")
+
+    async def probe_ipc020_legacy(self, device: CameraDevice) -> str:
+        """Classify legacy P2P provisioning without revealing session credentials.
+
+        Diagnostic only. This does not initialize TUTK or send video/motor commands.
+        Called at most once per CameraSession, and only after MISS error -6.
+        """
+        if device.model != "chuangmi.camera.ipc020":
+            raise ValueError("Legacy probe is restricted to ipc020")
+        public, _private = generate_keypair()
+        try:
+            result = await self.request(
+                "/device/devicepass",
+                {"did": device.did, "toSignAppData": public.hex()},
+                retry=False,
+            )
+        except AuthenticationError:
+            return "legacy_auth_expired"
+        except CloudError as err:
+            if err.code is not None:
+                return f"legacy_cloud_code_{err.code}"
+            return "legacy_cloud_unavailable"
+        if not isinstance(result, dict):
+            return "legacy_invalid_result"
+        has_uid = isinstance(result.get("p2p_id"), str) and bool(result["p2p_id"])
+        has_password = isinstance(result.get("password"), str) and bool(result["password"])
+        has_sign = isinstance(result.get("signForAppData"), str) and bool(result["signForAppData"])
+        has_public_key = (
+            isinstance(result.get("p2p_dev_public_key"), str)
+            and bool(result["p2p_dev_public_key"])
+        )
+        if not has_uid:
+            return "legacy_no_p2p_id"
+        if has_password or (has_sign and has_public_key):
+            return "legacy_p2p_credentials_available"
+        return "legacy_incomplete_credentials"
+
+    async def legacy_provision_ipc020(self, device: CameraDevice) -> LegacyProvisioning:
+        """Request ephemeral TUTK credentials only for the opted-in ipc020 test.
+
+        The returned object must remain in memory; never write it to config
+        entries, diagnostic JSON, persistent state, exception text or logs.
+        """
+        if device.model != "chuangmi.camera.ipc020":
+            raise ProtocolError("Legacy TUTK transport is available only for ipc020")
+        public, private = generate_keypair()
+        result = await self.request(
+            "/device/devicepass",
+            {"did": device.did, "toSignAppData": public.hex()}, retry=True,
+        )
+        if not isinstance(result, dict):
+            raise ProtocolError("Invalid TUTK provisioning response")
+        uid = result.get("p2p_id")
+        if not isinstance(uid, str) or not 1 <= len(uid) <= 36 or not uid.isascii():
+            raise ProtocolError("Legacy camera has no usable P2P identifier")
+        signed = result.get("signForAppData")
+        pub_hex = result.get("p2p_dev_public_key")
+        if isinstance(signed, str) and signed and isinstance(pub_hex, str) and pub_hex:
+            try:
+                peer = bytes.fromhex(pub_hex)
+                if len(peer) != 32 or len(signed) > 512:
+                    raise ValueError
+            except ValueError:
+                raise ProtocolError("Invalid signed TUTK credentials") from None
+            return LegacyProvisioning(
+                uid=uid, auth_mode="signed", public=public, private=private,
+                device_public=peer, sign=signed,
+            )
+        password = result.get("password")
+        if isinstance(password, str) and 0 < len(password.encode()) <= 256:
+            return LegacyProvisioning(uid=uid, auth_mode="password", password=password)
+        raise ProtocolError("Incomplete TUTK credentials from Xiaomi cloud")
 
     async def provision(self, device: CameraDevice) -> Provisioning:
         if ".cateye." in device.model:

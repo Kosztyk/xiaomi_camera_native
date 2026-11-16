@@ -10,7 +10,11 @@ class AuthenticationError(XiaomiError):
 
 
 class CloudError(XiaomiError):
-    """Cloud request failed."""
+    """Cloud request failed. Numeric cloud code is safe for structured diagnostics."""
+
+    def __init__(self, message: str, *, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class ProtocolError(XiaomiError):

@@ -77,6 +77,7 @@ class MpegTsMuxer:
 
     def restart(self) -> None:
         """Wait for fresh codec headers after reconnect, retaining TS continuity."""
+        self.codec = None
         self._started = False
         self._parameters.clear()
         self._last_input = None
@@ -100,10 +101,12 @@ class MpegTsMuxer:
     def _packetize(self, payload: bytes, pts: int, keyframe: bool) -> bytes:
         pes = b"\x00\x00\x01\xe0\x00\x00\x80\x80\x05" + encode_pts(pts) + payload
         packets = []
-        first = True
-        while pes:
+        offset = 0
+        while offset < len(pes):
+            first = offset == 0
             capacity = 176 if first else 184  # The first TS packet carries PCR.
-            chunk, pes = pes[:capacity], pes[capacity:]
+            chunk = pes[offset : offset + capacity]
+            offset += len(chunk)
             adaptation = first or len(chunk) < 184
             header = self._header(VIDEO_PID, first, adaptation)
             if adaptation:
@@ -115,7 +118,6 @@ class MpegTsMuxer:
                     extra = b"\x00" if size else b""
                 header += bytes((size,)) + extra + b"\xff" * (size - len(extra))
             packets.append(header + chunk)
-            first = False
         return b"".join(packets)
 
     def feed(self, packet: VideoPacket) -> MuxedVideo | None:

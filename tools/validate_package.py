@@ -30,6 +30,8 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
     required('.github/workflows/validate.yml')
     required('VALIDATION.md')
     required('HACS_PUBLISHING.md')
+    required('docs/IPC020.md')
+    required('RELEASE_NOTES_0.3.14.md')
 
     if manifest_path.is_file():
         try:
@@ -39,8 +41,8 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
                 errors.append(f'Manifest missing: {", ".join(sorted(missing))}')
             if manifest.get('domain') != DOMAIN:
                 errors.append('Domain does not match component folder name')
-            if manifest.get('version') != '0.3.13':
-                errors.append('Manifest version must be 0.3.13 for this upgrade')
+            if manifest.get('version') != '0.3.14':
+                errors.append('Manifest version must match the v0.3.14 release')
             if not manifest.get('codeowners'):
                 errors.append('Manifest needs at least one codeowner')
             expected_order = ['domain', 'name'] + sorted(

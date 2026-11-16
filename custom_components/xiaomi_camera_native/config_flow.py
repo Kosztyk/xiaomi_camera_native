@@ -305,8 +305,12 @@ class XiaomiCameraOptionsFlow(config_entries.OptionsFlow):
                 vol.Coerce(int), vol.Range(min=10, max=300)
             ),
         }
-        # Only offer experimental PTZ for explicitly allowed unverified models.
-        # ip029a is hardware-verified as of v0.3.12, so no opt-in is shown.
+        # ipc020 keeps separate opt-ins for TUTK and horizontal pan.
+        # The verified CS2 models expose all four directions by default.
+        if device["model"] == "chuangmi.camera.ipc020":
+            fields[
+                vol.Required("experimental_legacy_tutk", default=current["experimental_legacy_tutk"])
+            ] = bool
         if device["model"] in EXPERIMENTAL_PAN_TILT_MODELS:
             fields[
                 vol.Required("experimental_pan_tilt", default=current["experimental_pan_tilt"])

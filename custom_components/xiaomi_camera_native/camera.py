@@ -19,6 +19,7 @@ from .protocol.snapshot import (
     SNAPSHOT_RETRY_SECONDS,
     SNAPSHOT_TIMEOUT,
     async_get_snapshot,
+    snapshot_size_allowed,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,8 @@ class NativeXiaomiCamera(Camera):
             "encoder_dropped_frames": session.encoder_dropped_frames,
             "last_error": session.last_error,
             "pan_tilt_supported": session.supports_pan_tilt,
+            "pan_tilt_directions": list(session.supported_pan_tilt_directions),
+            "pan_tilt_ready": session.pan_tilt_ready,
             "pan_tilt_experimental": session.pan_tilt_experimental,
             "last_ptz_error": session.last_ptz_error,
             "fast_snapshot_enabled": self._fast_snapshot_enabled,
@@ -100,10 +103,27 @@ class NativeXiaomiCamera(Camera):
             "address_source": session.address_source,
             "address_updates": session.address_updates,
         }
+        if session.device.model == "chuangmi.camera.ipc020":
+            attributes["ipc020_legacy_probe"] = session.legacy_probe_status
+            attributes["ipc020_tutk_test_enabled"] = session.options.experimental_legacy_tutk
+            attributes["ipc020_tutk_stage"] = session.legacy_tutk_stage
+            attributes["ipc020_tutk_auth_mode"] = session.legacy_tutk_auth_mode
+            attributes["ipc020_tutk_sdk"] = session.legacy_tutk_sdk
+            attributes["ipc020_tutk_video_packets"] = session.legacy_tutk_video_packets
+            attributes["ipc020_tutk_dropped_packets"] = session.legacy_tutk_dropped_packets
+            attributes["ipc020_tutk_malformed_packets"] = session.legacy_tutk_malformed_packets
+            attributes["ipc020_tutk_last_control"] = session.legacy_tutk_last_control
+            attributes["ipc020_tutk_media_results"] = session.legacy_tutk_media_results
+            attributes["ipc020_tutk_ptz_command_seq"] = session.legacy_tutk_ptz_command_seq
+            attributes["ipc020_tutk_ptz_ack_state"] = session.legacy_tutk_ptz_ack_state
+            attributes["ipc020_tutk_ptz_ack_ms"] = session.legacy_tutk_ptz_ack_ms
+            attributes["ipc020_tutk_ptz_unmatched_acks"] = session.legacy_tutk_ptz_unmatched_acks
+            attributes["ipc020_tutk_ptz_app_responses"] = session.legacy_tutk_ptz_app_responses
+            attributes["ipc020_tutk_ptz_last_direction"] = session.legacy_tutk_ptz_last_direction
         if session.supports_pan_tilt and getattr(self, "hass", None) is not None:
             registry = er.async_get(self.hass)
             buttons = {}
-            for direction in ("left", "right", "up", "down"):
+            for direction in session.supported_pan_tilt_directions:
                 entity_id = registry.async_get_entity_id(
                     "button", DOMAIN, f"{session.device.did}_ptz_{direction}"
                 )
@@ -129,6 +149,8 @@ class NativeXiaomiCamera(Camera):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
+        if not snapshot_size_allowed(width, height):
+            return None
         # One budget includes lock waiting and both probe modes. A stalled
         # camera must not trigger two successive full-length snapshot waits.
         loop = asyncio.get_running_loop()

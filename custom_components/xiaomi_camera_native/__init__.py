@@ -117,6 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # A camera deselected in Rediscover must not leave an empty device.
         try:
             _cleanup_removed_camera_devices(hass, entry)
+            _cleanup_unsupported_ipc020_tilt_entities(hass, entry)
         except Exception:
             # A registry cleanup error must never bring down working streams.
             _LOGGER.exception("Failed to reconcile removed Xiaomi camera devices")
@@ -154,13 +155,14 @@ def _configured_camera_ids(entry: ConfigEntry) -> set[str]:
 
 
 def _is_removed_camera_device(entry: ConfigEntry, device: dr.DeviceEntry) -> bool:
-    """Recognize only *our* previously selected cameras, never active devices."""
-    owners = getattr(device, "config_entries", None)
-    if owners is not None:
-        if set(owners) != {entry.entry_id}:
-            # Refuse shared devices and devices owned by other entries.
-            return False
-    elif getattr(device, "config_entry_id", None) != entry.entry_id:
+    """Recognize deselected cameras owned exclusively by this config entry."""
+    if getattr(device, "is_composite_device", False):
+        return False
+    try:
+        owners = {device.config_entry_id}
+    except AttributeError:
+        owners = set(getattr(device, "config_entries", ()))
+    if owners != {entry.entry_id}:
         return False
     ids = {identifier for domain, identifier in device.identifiers if domain == DOMAIN}
     return bool(ids) and ids.isdisjoint(_configured_camera_ids(entry))
@@ -186,6 +188,30 @@ def _cleanup_removed_camera_devices(hass: HomeAssistant, entry: ConfigEntry) -> 
         if registry.async_get(device.id) is not None:
             registry.async_remove_device(device.id)
         _LOGGER.debug("Removed orphaned Xiaomi camera device %s", device.id)
+
+
+def _cleanup_unsupported_ipc020_tilt_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Prune old b2/b3 tilt buttons on active ipc020 devices after platform setup.
+
+    This only touches our exact legacy entity unique IDs owned by this config
+    entry. It does not remove the camera device, video or working pan controls.
+    """
+    registry = er.async_get(hass)
+    for session in entry.runtime_data.sessions.values():
+        if session.device.model != "chuangmi.camera.ipc020":
+            continue
+        for direction in ("up", "down"):
+            uid = f"{session.device.did}_ptz_{direction}"
+            entity_id = registry.async_get_entity_id("button", DOMAIN, uid)
+            entity = registry.async_get(entity_id) if entity_id else None
+            if (
+                entity is not None
+                and entity.platform == DOMAIN
+                and entity.config_entry_id == entry.entry_id
+                and entity.unique_id == uid
+            ):
+                registry.async_remove(entity.entity_id)
+                _LOGGER.debug("Removed unsupported ipc020 tilt button %s", entity.entity_id)
 
 
 async def async_remove_config_entry_device(

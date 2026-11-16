@@ -28,11 +28,11 @@ PAN_TILT_MODELS = frozenset(
 )
 # No unverified models are currently enabled for opt-in PTZ experiments.
 # Keep this separate mechanism for any explicitly authorized future field tests.
-EXPERIMENTAL_PAN_TILT_MODELS = frozenset()
+EXPERIMENTAL_PAN_TILT_MODELS = frozenset({"chuangmi.camera.ipc020"})
 
 
 def pan_tilt_supported(model: str, *, experimental_enabled: bool = False) -> bool:
-    """Allow verified PTZ by default; require explicit opt-in for field-test models."""
+    """Allow verified CS2 PTZ by default and honor the opt-in model list."""
     return model in PAN_TILT_MODELS or (
         experimental_enabled is True and model in EXPERIMENTAL_PAN_TILT_MODELS
     )

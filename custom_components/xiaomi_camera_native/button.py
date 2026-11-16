@@ -29,6 +29,7 @@ async def async_setup_entry(
         for session in entry.runtime_data.sessions.values()
         if session.supports_pan_tilt
         for description in BUTTONS
+        if description.key in session.supported_pan_tilt_directions
     )
 
 

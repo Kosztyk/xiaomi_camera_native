@@ -27,6 +27,7 @@
           .label { font: 500 13px/1.4 var(--primary-font-family, sans-serif);
             color: var(--secondary-text-color, #666); }
           .arrows { display: flex; gap: 6px; }
+          button[hidden] { display: none; }
           button { display: inline-flex; justify-content: center; align-items: center;
             width: 44px; height: 44px; padding: 10px; box-sizing: border-box;
             border: 1px solid var(--divider-color, #ddd); border-radius: 12px;
@@ -87,10 +88,14 @@
 
     _updateDisabled() {
       const unavailable = ["unavailable", "unknown"].includes(this._stateObj?.state);
+      const waitingForVideo = this._stateObj?.attributes?.pan_tilt_ready === false;
       for (const [direction, button] of Object.entries(this._buttons)) {
         const target = this._targets?.[direction];
-        button.disabled = this._busy || unavailable ||
-          typeof target !== "string" || !/^button\.[a-z0-9_]+$/.test(target);
+        const supported = typeof target === "string" && /^button\.[a-z0-9_]+$/.test(target);
+        // When only horizontal pan is supported, do not show tilt arrows.
+        // The button platform and session command gate enforce the same rule.
+        button.hidden = !supported;
+        button.disabled = this._busy || unavailable || waitingForVideo || !supported;
       }
     }
 

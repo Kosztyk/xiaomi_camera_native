@@ -2,7 +2,7 @@
 
 This document distinguishes packaging checks from functional hardware testing.
 
-## Packaging validation (0.3.13)
+## Release validation (0.3.14)
 
 Run from the root of the repository:
 
@@ -10,21 +10,22 @@ Run from the root of the repository:
 python3 tools/validate_package.py
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q custom_components
+node --test tests/test_ipc020_frontend.js
 ```
 
-The bundled offline tests validate HACS layout, JSON metadata, bundled files,
-English translation parity, version/license consistency, the four-model hardware-verified PTZ
-allowlist, the fact that `ip029a` works without the old experimental option,
-and device-registry reconciliation/removal policy using offline test doubles. Compilation checks Python syntax. **Offline checks do not validate streaming, authentication or physical movement**.
+The Python tests cover packaging, translations, version and license
+consistency, device-registry cleanup, Xiaomi request handling, media transport,
+snapshot limits, stream and encoder recovery, and supported movement
+directions. The JavaScript test checks popup controls for both `ipc020` and
+four-direction CS2 cameras. These checks use synthetic inputs and test doubles.
 
-Once published to GitHub, review the results of the `HACS Validation` and
-`Hassfest Validation` jobs under GitHub Actions. Their result cannot be
-confirmed by local packaging checks.
+The GitHub workflow also runs the `HACS Validation` and
+`Hassfest Validation` jobs before publishing the release.
 
 ## Hardware and runtime compatibility
 
 On **2026-10-24** the owner tested actual Xiaomi cameras using the native
-Home Assistant Xiaomi Camera Native v0.3.8 buttons, **not go2rtc**. Screen
+Home Assistant Xiaomi Camera Native v0.3.8 buttons. Screen
 recordings show the scene moving during PTZ button presses. Home Assistant's
 recorder logged the same native button entities at the corresponding times.
 
@@ -39,7 +40,7 @@ The three videos and report are publicly attached to the owner's
 [review reply on #12439](https://github.com/hacs/default/pull/12439#issuecomment-6388692080)
 and remain available after that PR was closed. Direct recording links are in
 the report. The tested motor command implementation is unchanged in v0.3.9
-through v0.3.13. Firmware identifiers were not available in the HA device registry.
+through v0.3.14. Firmware identifiers were not available in the HA device registry.
 Recorder events alone do not prove motor movement; the changes in the video
 provide that separate observation. This does not verify other firmware versions
 or provide a motor position/command acknowledgement.
@@ -55,19 +56,68 @@ This is **user-reported physical movement, not an independently reviewed video**
 It supports model-level PTZ promotion but cannot guarantee every firmware.
 See the [dated ip029a report](docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md).
 
-HACS and Hassfest CI check packaging/integration rules only, not motors.
-Audio, HomeKit end-to-end playback and multi-client performance remain
-unverified.
+For `chuangmi.camera.ipc020`, a user confirmed TUTK/18 streaming,
+physical horizontal pan and popup behavior on firmware `4.0.9_0102`
+using v0.3.14b5. [Hardware evidence and diagnostics](docs/IPC020.md#hardware-verification)
 
-## Historical testing reference
-
-Earlier README revisions referred to 73 Python tests, 9 JavaScript DOM tests,
-and standalone test tools. Those historical test sources are **not present**
-in the published 0.3.7 repository and have not been reconstructed here.
-The current `tests/` folder contains offline structural checks, not
-the historical protocol, lifecycle or JavaScript test suites.
+The release covers the tested protocols and models. The TUTK 25+ recovery
+and codec-change checks used synthetic streams. The integration exposes
+video only. HomeKit end-to-end playback remains unverified.
 
 ## Security and troubleshooting
 
 Do not attach Mi Home passwords, passTokens, authorization cookies, personal
 endpoint URLs or session keys to public bug reports. Use sanitized HA logs.
+
+## Private test v0.3.14b3 — ipc020 TUTK PTZ ACK behavior
+
+- Exercises TUTK/18 command/request-ID ACK matching, stale-ACK rejection,
+  one-attempt-only motor commands, media retry preservation and sanitized
+  counter behavior in offline Python tests.
+- Video success is separately reported by a user on v0.3.14b2, documented in
+  `docs/IPC020_HARDWARE_TEST_FEEDBACK_2026-11-13.md`.
+- Subsequent b3 field testing on 14 November 2026 confirmed 6/6 horizontal movements and
+  no vertical movement; see the private b4 section below.
+
+## Private test v0.3.14b4 — ipc020 horizontal-only PTZ
+
+- On 14 November 2026, the owner of an `ipc020` reported b3 TUTK/18 H.265
+  video with 5,300 frames, 0 drops, 0 malformed packets and 0 reconnects.
+  In a controlled trial, **left 3/3** and **right 3/3** produced physical
+  movement; up/down did not (0/3 each) despite matching transport ACKs.
+- Official Mi Home UI was independently checked by the user and offers
+  left/right only. This is a horizontal-pan-only camera. See the
+  [hardware feedback](docs/IPC020_HARDWARE_TEST_FEEDBACK_2026-11-14.md).
+- b4 offline tests verify: only two buttons on ipc020, four on verified CS2
+  models, explicit protocol rejection of tilt, targeted registry cleanup,
+  and frontend suppression of unavailable controls. TUTK media and b3 ACK
+  implementations are unchanged.
+- Later hardware results use b5.
+
+## Private test v0.3.14b5 — ipc020 recovery
+
+- Offline tests cover automatic IP recovery, fixed addresses, concurrent
+  service-token refresh, UDP port negotiation, live-session pan readiness,
+  and immediate publication of motor timeouts.
+- The owner confirmed H.265 input, H.264 output, and six physical left/right
+  moves on TUTK/18. In a fresh browser tab with the b5 asset, both popup arrows
+  also moved the camera and live video continued. [b5 hardware report](https://github.com/Kosztyk/xiaomi_camera_native/issues/5#issuecomment-6910597109)
+  · [Popup retest](https://github.com/Kosztyk/xiaomi_camera_native/issues/5#issuecomment-6911560788)
+
+## Private test v0.3.14b6 — security and stream recovery
+
+- Regression tests cover snapshot size limits, authenticated redirect
+  rejection, cancellation-safe encoder shutdown, byte-limited media queues,
+  MPEG-TS payload integrity, codec changes, and TUTK 25+ sequence gaps and
+  rollover.
+- Device registry tests cover both single-entry ownership and the older
+  multi-entry registry.
+- Local loopback tests exercised signed TUTK/18 streaming and pan ACKs, a
+  concurrent JPEG snapshot while encoding H.264, and H.265-to-H.264
+  reconnection in both output modes. A separate test checked that an
+  authenticated HTTP 307 sent no request to its destination. Repeated
+  cancellation reaped a subprocess that ignored SIGTERM.
+- On Home Assistant 2026.11.1, b6 received frames on the C200 and C301
+  without reconnects or fresh registry deprecation warnings. The `029a02`
+  hit a CS2 handshake timeout before video reception during that check.
+  The Home Assistant host used for this check did not have an `ipc020`.

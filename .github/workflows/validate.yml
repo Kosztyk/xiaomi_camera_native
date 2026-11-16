@@ -19,8 +19,10 @@ jobs:
           python-version: '3.13'
       - name: Validate repository packaging
         run: python tools/validate_package.py
-      - name: Run packaging unit tests
+      - name: Run Python regression tests
         run: python -m unittest discover -s tests -v
+      - name: Check camera popup controls
+        run: node --test tests/test_ipc020_frontend.js
       - name: Compile integration Python code
         run: python -m compileall -q custom_components
 

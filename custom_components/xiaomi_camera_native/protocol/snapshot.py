@@ -8,6 +8,17 @@ from contextlib import suppress
 SNAPSHOT_TIMEOUT = 8.0
 SNAPSHOT_CACHE_SECONDS = 10.0
 SNAPSHOT_RETRY_SECONDS = 2.0
+MAX_SNAPSHOT_DIMENSION = 4096
+MAX_SNAPSHOT_PIXELS = 4096 * 2160
+
+
+def snapshot_size_allowed(width: int | None, height: int | None) -> bool:
+    """Validate caller requests, treating zero and None as unspecified."""
+    return all(
+        dimension is None
+        or (type(dimension) is int and 0 <= dimension <= MAX_SNAPSHOT_DIMENSION)
+        for dimension in (width, height)
+    ) and (width or 0) * (height or 0) <= MAX_SNAPSHOT_PIXELS
 
 
 def complete_jpeg(image: bytes | None) -> bool:
@@ -31,8 +42,10 @@ async def async_get_snapshot(
     Do not use ha-ffmpeg ImageFrame's timeout cleanup here: its kill() and
     close(0) can each start a new communicate() reader for the same pipe.
     """
+    if not snapshot_size_allowed(width, height):
+        return None
     inputs = ["-f", "mpegts", "-probesize", "65536", "-analyzeduration", "500000"] if fast else []
-    size = ["-s", f"{int(width)}x{int(height)}"] if width and height else []
+    size = ["-s", f"{width}x{height}"] if width and height else []
     process = await asyncio.create_subprocess_exec(
         ffmpeg,
         "-hide_banner",

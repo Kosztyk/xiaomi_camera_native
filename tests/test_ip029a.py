@@ -14,7 +14,7 @@ from typing import Any, Mapping
 ROOT = Path(__file__).resolve().parents[1]
 COMP = ROOT / "custom_components/xiaomi_camera_native"
 VERIFIED = {"chuangmi.camera.029a02", "chuangmi.camera.ip029a", "chuangmi.camera.046c04", "mxiang.camera.c301"}
-EXPERIMENTAL = set()
+EXPERIMENTAL = {"chuangmi.camera.ipc020"}
 
 
 def _policy():
@@ -36,7 +36,7 @@ def _policy():
 
 
 class Ip029aTests(unittest.TestCase):
-    def test_four_verified_models_and_no_experimental_models(self):
+    def test_four_verified_models_and_one_opt_in_test_model(self):
         ns = _policy()
         self.assertEqual(ns["PAN_TILT_MODELS"], VERIFIED)
         self.assertEqual(ns["EXPERIMENTAL_PAN_TILT_MODELS"], EXPERIMENTAL)
@@ -70,7 +70,7 @@ class Ip029aTests(unittest.TestCase):
 
     def test_options_switch_hidden_for_promoted_ip029a(self):
         # The flow includes the field only when the camera model is in the
-        # (now empty) experimental allowlist. Existing stored values are harmless.
+        # opt-in allowlist. Existing stored values are harmless.
         flow = (COMP / "config_flow.py").read_text()
         self.assertIn('if device["model"] in EXPERIMENTAL_PAN_TILT_MODELS:', flow)
         self.assertIn('"experimental_pan_tilt", default=current["experimental_pan_tilt"]', flow)

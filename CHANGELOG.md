@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.3.14 — IMILAB ipc020 and streaming reliability
+
+- Add opt-in direct TUTK LAN video for `chuangmi.camera.ipc020`, with a
+  separate provisioning path for cameras affected by Xiaomi MISS error `-6`.
+- Add optional left/right movement for `ipc020` once live video is ready.
+  The device page and popup show only supported directions. Old beta tilt
+  entities are cleaned up during setup.
+- Recover changed TUTK camera IPs, pin the UDP peer after the handshake and
+  share service-token refresh across concurrent provisioning requests.
+- Limit snapshot dimensions, refuse authenticated API redirects and reap
+  FFmpeg when an encoder session is cancelled.
+- Cap queued media by bytes, speed up MPEG-TS packetization and recover
+  after source codec changes or missing packets on the TUTK 25+ path.
+- Use current Home Assistant device-registry ownership fields with an
+  older-version fallback. [ipc020 setup and evidence](docs/IPC020.md)
+
+## 0.3.14b6 — Private security and streaming test
+
+- Limit requested snapshot sizes to 4,096 pixels per side and 8,847,360
+  pixels total before starting FFmpeg.
+- Reject redirects from authenticated Xiaomi API requests.
+- Reap the FFmpeg encoder during cancellation and keep its pipes draining
+  until it exits.
+- Packetize MPEG-TS frames in linear time and cap transport and viewer
+  queues by payload bytes.
+- Recover TUTK 25+ streams after packet loss and restart the video pipeline
+  when the source switches codecs.
+- Use the current Home Assistant device ownership field with a fallback for
+  older device registries.
+
+## 0.3.14b5 — Private ipc020 recovery test
+
+- Recover a changed TUTK camera IP through the existing router and Xiaomi
+  discovery resolver. Save a recovered address after the camera handshake.
+- Refresh an expired Xiaomi service token once and retry TUTK provisioning.
+  Concurrent provisioning requests share a successful account refresh.
+- Confirm the UDP peer during the handshake and use it for the live session.
+- Enable horizontal pan once the current TUTK session receives video.
+- Publish the motor ACK outcome immediately, including timeouts and aborted sends.
+
+## 0.3.14b4 — PRIVATE ipc020 horizontal-pan-only test (unpublished)
+
+- Owner reported stable TUTK/18 H.265 streaming in b3 and **6/6 physical
+  horizontal movements**. Mi Home offers **left/right only** for this camera.
+- Expose Left and Right buttons on the `ipc020` test model; suppress Tilt Up
+  and Down. Reject any vertical TUTK motor command before sending it.
+- Remove obsolete Up/Down Home Assistant entity-registry records on reload
+  for configured `ipc020` cameras, without removing the camera device or
+  affecting other models or configuration entries.
+- Hide unsupported directional arrows entirely in the camera popup; maintain
+  four arrows for the four existing hardware-verified CS2 models.
+- Add `pan_tilt_directions` capability to safe camera attributes/diagnostics.
+- Preserve b3 ACK matching, no motor retries and all streaming/CS2 code.
+- Include dated owner hardware evidence and offline regression tests.
+- This private test required both the TUTK and horizontal-pan opt-ins.
+
+## 0.3.14b3 — PRIVATE ipc020 PTZ acknowledgement reliability test (unpublished)
+
+- Based on experimental b2, which a volunteer confirmed working for
+  `ipc020` 1080p H.265 TUTK/18 streaming on 2026-11-13.
+- Match TUTK/18 PTZ ACKs to both request sequence and request ID. Ignore
+  stale ACKs; never infer physical motor movement from transport ACKs.
+- Send a **single** `0xF005` motor request per press, without transport retries.
+  Existing audio/video/quality initialization retries are unchanged.
+- Record safe PTZ sequence, ACK correlation state, ACK elapsed milliseconds,
+  unmatched-ACK count and inbound `0xF005` message count. No secrets exposed.
+- Add b3 packet regression tests and a dated hardware-feedback report.
+- PTZ remains opt-in and hardware verification of the b3 change is pending.
+  Official published GitHub/HACS release remains v0.3.13.
+
+
 ## 0.3.13 — safe device removal after Rediscover
 
 - Automatically prune device- and entity-registry records for Xiaomi cameras

@@ -1,4 +1,4 @@
-Xiaomi Camera Native 0.3.13
+Xiaomi Camera Native 0.3.14
 Copyright (c) 2026 Kosztyk
 
 This integration includes Python adaptations of Xiaomi protocol code from
@@ -17,9 +17,9 @@ Reference files:
 - pkg/xiaomi/miss/cs2/conn.go: LAN discovery, TCP framing, DRW sequencing and ACKs
 - pkg/xiaomi/miss/producer.go: video codec identifiers and timestamp interpretation
 
-The media muxer, Home Assistant integration, lifecycle code, diagnostics
-and offline structural tests are supplied as part of this project. go2rtc itself is not bundled
-or executed. No Xiaomi native SDK is bundled.
+The media muxer, Home Assistant integration, lifecycle code, diagnostics,
+and regression tests are supplied as part of this project. go2rtc itself is
+not bundled or executed. No Xiaomi native SDK is bundled.
 
 Cryptographic vector references:
 https://www.rfc-editor.org/rfc/rfc7748
@@ -37,3 +37,11 @@ No ONVIF server or go2rtc runtime is included.
 The October 2026 physical Python-implementation PTZ checks are documented
 in docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md in this repository.
 The upstream go2rtc result remains a protocol reference only.
+
+TUTK framing and handshake reference (MIT):
+https://github.com/AlexxIT/go2rtc/tree/v1.9.15/pkg/tutk
+- conn.go, session0.go, session16.go, session25.go, crypto.go, codec.go
+These were adapted to a standalone Python module `protocol/tutk.py`.
+No TUTK proprietary native libraries or camera APK files are distributed.
+The ipc020 media handshake and left/right 0xF005 motor commands were exercised
+on physical hardware with v0.3.14b5. See docs/IPC020.md for the test evidence.

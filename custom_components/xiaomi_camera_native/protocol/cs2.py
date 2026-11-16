@@ -12,12 +12,15 @@ import struct
 from contextlib import suppress
 from typing import Any
 
+from .buffer import ByteLimitedQueue
 from .errors import ProtocolError, TransportError
 
 MAGIC = 0xF1
 DRW = 0xD0
 ACK = 0xD1
 MAX_MESSAGE = 8 * 1024 * 1024
+MAX_CHANNEL_BYTES = 2 * MAX_MESSAGE
+MAX_DATAGRAM_QUEUE_BYTES = 4 * 1024 * 1024
 MAX_FRAME = 65535
 
 
@@ -40,7 +43,9 @@ class DataChannel:
         self.window = window
         self.pending: dict[int, bytes] = {}
         self.buffer = bytearray()
-        self.queue: asyncio.Queue[bytes | None] = asyncio.Queue(queue_size)
+        self.queue: ByteLimitedQueue[bytes | None] = ByteLimitedQueue(
+            queue_size, MAX_CHANNEL_BYTES, lambda item: len(item) if item else 0
+        )
         self.pending_bytes = 0
 
     def feed(self, data: bytes) -> None:
@@ -96,7 +101,9 @@ class DataChannel:
 class _Datagrams(asyncio.DatagramProtocol):
     def __init__(self, host: str) -> None:
         self.host = host
-        self.queue: asyncio.Queue[tuple[bytes, tuple[str, int]] | None] = asyncio.Queue(2048)
+        self.queue: ByteLimitedQueue[tuple[bytes, tuple[str, int]] | None] = ByteLimitedQueue(
+            2048, MAX_DATAGRAM_QUEUE_BYTES, lambda item: len(item[0]) if item else 0
+        )
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         if addr[0] != self.host or len(data) < 4 or data[0] != MAGIC:

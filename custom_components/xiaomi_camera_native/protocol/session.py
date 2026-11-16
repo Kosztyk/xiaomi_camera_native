@@ -13,14 +13,17 @@ from typing import Any
 from aiohttp import web
 
 from .address import CameraAddressResolver
-from .cloud import CameraDevice, XiaomiCloud
-from .errors import AuthenticationError, ProtocolError, TransportError, XiaomiError
+from .buffer import ByteLimitedQueue
+from .cloud import CameraDevice, LegacyProvisioning, Provisioning, XiaomiCloud
+from .errors import AuthenticationError, CloudError, ProtocolError, TransportError, XiaomiError
 from .media import MpegTsMuxer, MuxedVideo
 from .miss import EXPERIMENTAL_PAN_TILT_MODELS, PAN_TILT_OPERATIONS, MissClient, pan_tilt_supported
 from .startup import H264StartupCache
+from .tutk import TutkClient, TutkStatus
 
 _LOGGER = logging.getLogger(__name__)
 QUEUE_SIZE = 256
+VIEWER_QUEUE_BYTES = 16 * 1024 * 1024
 MAX_CACHE = 4 * 1024 * 1024
 ENCODER_QUEUE_SIZE = 64
 ENCODER_QUEUE_BYTES = 4 * 1024 * 1024
@@ -53,6 +56,7 @@ class StreamOptions:
     height: int = 720
     idle_timeout: int = 30
     experimental_pan_tilt: bool = False
+    experimental_legacy_tutk: bool = False
 
     @classmethod
     def from_profile(cls, profile: Mapping[str, Any]) -> StreamOptions:
@@ -96,6 +100,23 @@ class CameraSession:
         self._refresh_address = False
         self.status = "idle"
         self.last_error: str | None = None
+        # Per-session, read-only compatibility test; never contains cloud secrets.
+        self.legacy_probe_status: str = "not_run"
+        self.legacy_tutk_stage: str = "not_enabled"
+        self.legacy_tutk_auth_mode: str = "unknown"
+        self.legacy_tutk_sdk: str = "unknown"
+        self.legacy_tutk_video_packets: int = 0
+        self.legacy_tutk_dropped_packets: int = 0
+        self.legacy_tutk_malformed_packets: int = 0
+        self.legacy_tutk_last_control: str = "not_sent"
+        self.legacy_tutk_media_results: str = "not_run"
+        self.legacy_tutk_ptz_command_seq: int | None = None
+        self.legacy_tutk_ptz_ack_state: str = "not_sent"
+        self.legacy_tutk_ptz_ack_ms: int | None = None
+        self.legacy_tutk_ptz_unmatched_acks: int = 0
+        self.legacy_tutk_ptz_app_responses: int = 0
+        self.legacy_tutk_ptz_last_direction: str = "not_sent"
+        self._legacy_probe_done = False
         self.protocol: str | None = None
         self.codec: str | None = None
         self.frames = 0
@@ -106,6 +127,7 @@ class CameraSession:
         self._idle: asyncio.TimerHandle | None = None
         self._encoder: asyncio.subprocess.Process | None = None
         self._encoder_tasks: list[asyncio.Task[Any]] = []
+        self._encoder_stop_task: asyncio.Task[None] | None = None
         self._encoder_failed = False
         self._encoder_queue: asyncio.Queue[MuxedVideo] = asyncio.Queue(ENCODER_QUEUE_SIZE)
         self._encoder_queue_bytes = 0
@@ -114,7 +136,7 @@ class CameraSession:
         self._encoder_wait_keyframe = True
         self.encoder_restarts = 0
         self.encoder_dropped_frames = 0
-        self._client: MissClient | None = None
+        self._client: MissClient | TutkClient | None = None
         self._cache = bytearray()
         self._cache_valid = False
         self._h264_cache = H264StartupCache()
@@ -125,9 +147,45 @@ class CameraSession:
         self._ptz_busy = False
 
     @property
-    def supports_pan_tilt(self) -> bool:
-        return pan_tilt_supported(
+    def _uses_legacy_tutk(self) -> bool:
+        return (
+            self.device.model == "chuangmi.camera.ipc020"
+            and self.options.experimental_legacy_tutk is True
+        )
+
+    @property
+    def supported_pan_tilt_directions(self) -> tuple[str, ...]:
+        """Physical motor capabilities, additionally gated by test opt-ins.
+
+        ipc020 is a horizontal-pan-only camera, confirmed with Mi Home and
+        native b3 hardware trials. Do not expose or send unsupported tilt.
+        """
+        if self.device.model == "chuangmi.camera.ipc020":
+            if self._uses_legacy_tutk and self.options.experimental_pan_tilt is True:
+                return ("left", "right")
+            return ()
+        if pan_tilt_supported(
             self.device.model, experimental_enabled=self.options.experimental_pan_tilt
+        ):
+            return ("left", "right", "up", "down")
+        return ()
+
+    @property
+    def supports_pan_tilt(self) -> bool:
+        """Backward-compatible aggregate for existing dashboard consumers."""
+        return bool(self.supported_pan_tilt_directions)
+
+    @property
+    def pan_tilt_ready(self) -> bool:
+        """Legacy pan needs live video from the current connection."""
+        if self._closed or not self.supports_pan_tilt:
+            return False
+        if not self._uses_legacy_tutk:
+            return True
+        return (
+            self.status == "streaming"
+            and isinstance(self._client, TutkClient)
+            and self._client.video_ready
         )
 
     @property
@@ -135,6 +193,8 @@ class CameraSession:
         return (
             self.device.model in EXPERIMENTAL_PAN_TILT_MODELS
             and self.options.experimental_pan_tilt is True
+            and (self.device.model != "chuangmi.camera.ipc020"
+                 or self._uses_legacy_tutk)
         )
 
     async def _address_candidates(self) -> AsyncIterator[tuple[str, str]]:
@@ -153,25 +213,77 @@ class CameraSession:
             if host := await resolver.cloud_address(self.device):
                 yield host, "xiaomi_cloud"
 
-    async def _connect_client(self, *, start_video: bool) -> MissClient:
+    def _tutk_status(self, status: TutkStatus) -> None:
+        # No UID, passwords, public keys, raw packets or tokens in attributes.
+        self.legacy_tutk_stage = status.stage
+        self.legacy_tutk_auth_mode = status.auth_mode
+        self.legacy_tutk_sdk = status.sdk
+        self.legacy_tutk_video_packets = status.video_packets
+        self.legacy_tutk_dropped_packets = status.dropped_packets
+        self.legacy_tutk_malformed_packets = status.malformed_packets
+        self.legacy_tutk_last_control = status.last_control
+        self.legacy_tutk_media_results = status.media_results
+        self.legacy_tutk_ptz_command_seq = status.ptz_command_seq
+        self.legacy_tutk_ptz_ack_state = status.ptz_ack_state
+        self.legacy_tutk_ptz_ack_ms = status.ptz_ack_ms
+        self.legacy_tutk_ptz_unmatched_acks = status.ptz_unmatched_acks
+        self.legacy_tutk_ptz_app_responses = status.ptz_app_responses
+        self.legacy_tutk_ptz_last_direction = status.ptz_last_direction
+        self.on_state()
+
+    async def _provision_camera(self) -> Provisioning | LegacyProvisioning:
+        if self._uses_legacy_tutk:
+            self.legacy_tutk_stage = "cloud_provisioning"
+            self.on_state()
+            credentials = await self.cloud.legacy_provision_ipc020(self.device)
+            self.legacy_probe_status = "legacy_p2p_credentials_available"
+            self.legacy_tutk_auth_mode = credentials.auth_mode
+            return credentials
+        try:
+            return await self.cloud.provision(self.device)
+        except CloudError as err:
+            # The opt-out path still reports legacy compatibility once on a MISS -6.
+            if (
+                self.device.model == "chuangmi.camera.ipc020"
+                and err.code == -6
+                and not self._legacy_probe_done
+            ):
+                self._legacy_probe_done = True
+                try:
+                    self.legacy_probe_status = await self.cloud.probe_ipc020_legacy(
+                        self.device
+                    )
+                except Exception:
+                    self.legacy_probe_status = "legacy_probe_failed"
+                self.on_state()
+            raise
+
+    async def _connect_client(self, *, start_video: bool) -> MissClient | TutkClient:
         attempted: set[str] = set()
-        error: Exception = TransportError("No current camera IPv4 address was discovered")
+        error: Exception | None = None
         async for host, source in self._address_candidates():
             if host in attempted:
                 continue
             attempted.add(host)
             # Fresh per-connection keys; provisioning/authentication errors are
             # not mistaken for a changed LAN address.
-            provisioning = await self.cloud.provision(self.device)
+            provisioning = await self._provision_camera()
+            client: MissClient | TutkClient
             try:
-                client = await MissClient.connect(
-                    host,
-                    provisioning,
-                    model=self.device.model,
-                    transport=self.options.transport,
-                    quality=self.options.quality,
-                    start_video=start_video,
-                )
+                if isinstance(provisioning, LegacyProvisioning):
+                    client = await TutkClient.connect(
+                        host, provisioning, quality=self.options.quality,
+                        start_video=start_video, on_status=self._tutk_status,
+                    )
+                else:
+                    client = await MissClient.connect(
+                        host,
+                        provisioning,
+                        model=self.device.model,
+                        transport=self.options.transport,
+                        quality=self.options.quality,
+                        start_video=start_video,
+                    )
             except (ProtocolError, TransportError, OSError, TimeoutError) as err:
                 error = err
                 self._refresh_address = True
@@ -184,8 +296,7 @@ class CameraSession:
                 self.address_updates += 1
                 self.device.host = host
                 self.options = replace(self.options, host=host)
-                # Persist only after a successful MISS authentication, not on
-                # an unverified router/cloud advertisement.
+                # Persist the recovered address after the camera handshake.
                 try:
                     self.on_address_changed(self.device, host)
                 except BaseException:
@@ -193,22 +304,29 @@ class CameraSession:
                     raise
                 _LOGGER.info("Updated LAN address for Xiaomi camera %s", self.device.did)
             return client
-        raise error
+        if error is not None:
+            raise error
+        if self._uses_legacy_tutk:
+            self.legacy_tutk_stage = "missing_camera_ip"
+            raise TransportError("TUTK needs the camera's local IPv4 address")
+        raise TransportError("No current camera IPv4 address was discovered")
 
     async def pan_tilt(self, direction: str) -> None:
         """Move one step without opening a competing video connection.
 
         Creation, motor writes and closure share a lock with the video task.
-        An idle camera gets a short control-only connection: no video command,
-        encoder or HTTP subscriber. Overlapping button presses are rejected
-        rather than queued into a long sequence of unintended movements.
+        Verified MISS cameras can use short control-only connections. Legacy
+        TUTK pan uses the live video connection. Reject overlapping presses.
         """
         if not isinstance(direction, str) or direction not in PAN_TILT_OPERATIONS:
             raise ProtocolError("Pan/tilt direction must be left, right, up or down")
-        if not self.supports_pan_tilt:
-            raise ProtocolError("Pan/tilt is not supported for this camera model")
+        if direction not in self.supported_pan_tilt_directions:
+            raise ProtocolError("This camera does not support the requested motor direction")
         if self._closed:
             raise TransportError("Camera integration is unloading")
+        live_video_required = "Open the live view and wait for video before using horizontal pan"
+        if self._uses_legacy_tutk and not self.pan_tilt_ready:
+            raise ProtocolError(live_video_required)
         if self._ptz_busy:
             raise TransportError("A pan/tilt command is still running; try again in a moment")
         self._ptz_busy = True
@@ -219,6 +337,8 @@ class CameraSession:
             async with asyncio.timeout(PAN_TILT_TIMEOUT), self._connection_lock:
                 if self._closed:
                     raise TransportError("Camera integration is unloading")
+                if self._uses_legacy_tutk and not self.pan_tilt_ready:
+                    raise ProtocolError(live_video_required)
                 client = self._client
                 temporary = client is None
                 if temporary:
@@ -270,7 +390,9 @@ class CameraSession:
                 self._idle = None
             if self._task is not None and self._task.cancelling():
                 await asyncio.gather(self._task, return_exceptions=True)
-            queue: asyncio.Queue[bytes | None] = asyncio.Queue(QUEUE_SIZE)
+            queue: ByteLimitedQueue[bytes | None] = ByteLimitedQueue(
+                QUEUE_SIZE, VIEWER_QUEUE_BYTES, lambda item: len(item) if item else 0
+            )
             if self.options.video_mode == "h264":
                 try:
                     if cached := self._h264_cache.snapshot():
@@ -401,27 +523,52 @@ class CameraSession:
 
     async def _encoder_output(self) -> None:
         assert self._encoder is not None and self._encoder.stdout is not None
-        while data := await self._encoder.stdout.read(188 * 32):
-            self._publish(data)
+        output = self._encoder.stdout
+        while data := await output.read(188 * 32):
+            if self._encoder_stop_task is None:
+                self._publish(data)
         self._encoder_failed = True
 
     async def _stop_encoder(self) -> None:
-        process, self._encoder = self._encoder, None
-        for task in self._encoder_tasks:
-            task.cancel()
-        await asyncio.gather(*self._encoder_tasks, return_exceptions=True)
-        self._encoder_tasks.clear()
-        if process is not None and process.returncode is None:
+        if self._encoder_stop_task is None:
+            if self._encoder is None:
+                return
+            self._encoder_stop_task = asyncio.create_task(self._reap_encoder(self._encoder))
+        cleanup = self._encoder_stop_task
+        cancelled = False
+        while True:
+            try:
+                await asyncio.shield(cleanup)
+                break
+            except asyncio.CancelledError:
+                if cleanup.cancelled():
+                    raise
+                cancelled = True
+        if cancelled:
+            raise asyncio.CancelledError
+
+    async def _reap_encoder(self, process: asyncio.subprocess.Process) -> None:
+        """Keep the pipe readers draining until the child has exited."""
+        try:
             if process.stdin is not None:
-                process.stdin.close()
-            with suppress(ProcessLookupError):
-                process.terminate()
+                with suppress(OSError):
+                    process.stdin.close()
+            if process.returncode is None:
+                with suppress(ProcessLookupError):
+                    process.terminate()
             try:
                 await asyncio.wait_for(process.wait(), 3)
             except TimeoutError:
                 with suppress(ProcessLookupError):
                     process.kill()
                 await process.wait()
+            for task in self._encoder_tasks:
+                task.cancel()
+            await asyncio.gather(*self._encoder_tasks, return_exceptions=True)
+            self._encoder_tasks.clear()
+            self._encoder = None
+        finally:
+            self._encoder_stop_task = None
 
     def _clear_encoder_queue(self) -> None:
         while not self._encoder_queue.empty():
@@ -487,12 +634,14 @@ class CameraSession:
 
     async def _stop_encoder_worker(self) -> None:
         worker, self._encoder_worker = self._encoder_worker, None
-        if worker is not None:
-            worker.cancel()
-            await asyncio.gather(worker, return_exceptions=True)
-        self._clear_encoder_queue()
-        self._encoder_wait_keyframe = True
-        await self._stop_encoder()
+        try:
+            if worker is not None:
+                worker.cancel()
+                await asyncio.gather(worker, return_exceptions=True)
+        finally:
+            self._clear_encoder_queue()
+            self._encoder_wait_keyframe = True
+            await self._stop_encoder()
 
     async def _capture(self, muxer: MpegTsMuxer) -> None:
         self._state("connecting")
@@ -500,7 +649,23 @@ class CameraSession:
             self._client = await self._connect_client(start_video=True)
         while True:
             packet = await self._client.read_video()
-            self.codec = "H.264" if packet.codec == 4 else "H.265"
+            codec = "H.264" if packet.codec == 4 else "H.265"
+            codec_changed = self.codec is not None and self.codec != codec
+            self.codec = codec
+            if codec_changed:
+                self._state("connecting")
+                muxer.restart()
+                if self.options.video_mode == "h264":
+                    if self._encoder is not None:
+                        self.encoder_restarts += 1
+                    await self._stop_encoder_worker()
+                    self._encoder_reset = False
+                    self._encoder_failed = False
+                    self._h264_cache.clear()
+                else:
+                    # Each original-output connection advertises one codec.
+                    # Returning EOF lets the consumer open the new format.
+                    self._finish()
             video = muxer.feed(packet)
             if video is None:
                 continue
@@ -576,11 +741,15 @@ class CameraSession:
         except asyncio.CancelledError:
             pass
         finally:
-            await self._close_client()
-            await self._stop_encoder_worker()
-            self._finish()
-            if self.status != "error":
-                self._state("idle")
+            try:
+                await self._close_client()
+            finally:
+                try:
+                    await self._stop_encoder_worker()
+                finally:
+                    self._finish()
+                    if self.status != "error":
+                        self._state("idle")
 
     async def close(self) -> None:
         self._closed = True
