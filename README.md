@@ -48,30 +48,29 @@ The documented minimum baseline is **Home Assistant 2025.3.0**. Initial live str
 
 ## Installation
 
-### Installation through HACS (Custom repository)
+### HACS installation (recommended)
 
-1. Open **HACS** in Home Assistant.
-2. From the three-dot menu, choose **Custom repositories**.
-3. Add `https://github.com/Kosztyk/xiaomi_camera_native` and select **Integration**.
-4. Find **Xiaomi Camera Native** in HACS and install it.
-5. Restart Home Assistant; then add it from **Settings → Devices & services**.
-
+1. Open **HACS** in Home Assistant and search the default catalog for **Xiaomi Camera Native**.
+2. Open the listing and select **Download**.
+3. Restart Home Assistant, then [configure the integration](#configure-in-home-assistant).
 
 ### Manual installation
 
-1. Download and extract the integration ZIP, or download this repository.
-2. Copy the `custom_components/xiaomi_camera_native` directory into your Home Assistant configuration directory.
+1. Download and extract the source ZIP from the [latest GitHub release](https://github.com/Kosztyk/xiaomi_camera_native/releases/latest).
+2. Copy the `custom_components/xiaomi_camera_native` directory to `/config/custom_components/`.
 3. Confirm that the manifest is located at:
 
    ```text
    /config/custom_components/xiaomi_camera_native/manifest.json
    ```
 
-4. Restart Home Assistant.
-5. Go to **Settings → Devices & services → Add integration**.
-6. Search for **Xiaomi Camera Native**.
-7. Sign in, select the same region used in Xiaomi Home/Mi Home, and choose your cameras.
-8. Refresh your browser after setup so the camera pop-up controls can load. Use a hard refresh if necessary, or fully close and reopen the Home Assistant Companion app.
+4. Restart Home Assistant, then [configure the integration](#configure-in-home-assistant).
+
+### Configure in Home Assistant
+
+1. Go to **Settings → Devices & services → Add integration** and select **Xiaomi Camera Native**.
+2. Sign in, select the same region used in Xiaomi Home/Mi Home, and choose your cameras.
+3. Refresh your browser after setup so the camera pop-up controls can load. Use a hard refresh if necessary, or fully close and reopen the Home Assistant Companion app.
 
 No YAML configuration or manual dashboard resource registration is required.
 
