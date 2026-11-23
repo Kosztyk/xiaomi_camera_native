@@ -187,7 +187,6 @@ def _cleanup_removed_camera_devices(hass: HomeAssistant, entry: ConfigEntry) -> 
         _remove_camera_entities(hass, entry, device.id)
         if registry.async_get(device.id) is not None:
             registry.async_remove_device(device.id)
-        _LOGGER.debug("Removed orphaned Xiaomi camera device %s", device.id)
 
 
 def _cleanup_unsupported_ipc020_tilt_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -211,7 +210,6 @@ def _cleanup_unsupported_ipc020_tilt_entities(hass: HomeAssistant, entry: Config
                 and entity.unique_id == uid
             ):
                 registry.async_remove(entity.entity_id)
-                _LOGGER.debug("Removed unsupported ipc020 tilt button %s", entity.entity_id)
 
 
 async def async_remove_config_entry_device(

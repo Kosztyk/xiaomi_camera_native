@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -21,8 +20,6 @@ from .protocol.snapshot import (
     async_get_snapshot,
     snapshot_size_allowed,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -185,7 +182,6 @@ class NativeXiaomiCamera(Camera):
                         # immediate standard-probe retry. A timeout propagates
                         # to the shared deadline instead of starting a retry.
                         self._fast_snapshot_enabled = False
-                        _LOGGER.debug("Fast snapshot unavailable; using standard input analysis")
                         image = await async_get_snapshot(
                             self._session.ffmpeg, source, width=width, height=height, fast=False
                         )
@@ -200,5 +196,4 @@ class NativeXiaomiCamera(Camera):
             # Do not expose commands, loopback tokens, or exception payloads.
             self._set_snapshot_error("Snapshot capture failed")
         self._snapshot_retry_at = loop.time() + SNAPSHOT_RETRY_SECONDS
-        _LOGGER.debug("Snapshot unavailable; waiting briefly before another capture")
         return None

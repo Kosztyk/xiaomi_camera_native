@@ -23,15 +23,22 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(english["options"]["step"]["profile"]["data"]["auto_update_ip"],
                          "Automatically update camera IP")
 
+    def test_component_has_no_debug_log_calls(self):
+        for path in COMP.rglob("*.py"):
+            for node in ast.walk(ast.parse(path.read_text())):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                    self.assertNotEqual(node.func.attr, "debug", f"{path.name}:{node.lineno}")
+
     def test_versions(self):
         manifest = json.loads((COMP / "manifest.json").read_text())
-        self.assertEqual(manifest["version"], "0.3.14")
-        self.assertIn('VERSION = "0.3.14"', (COMP / "const.py").read_text())
+        version = manifest["version"]
+        self.assertEqual(version, "0.3.15")
+        self.assertIn(f'VERSION = "{version}"', (COMP / "const.py").read_text())
         self.assertIn('camera-controls.js?v={VERSION}', (COMP / "frontend.py").read_text())
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
-        self.assertIn('[[ "$VERSION" == "0.3.14" ]]', workflow)
-        self.assertIn('RELEASE_NOTES_0.3.14.md', workflow)
-        self.assertIn("Xiaomi Camera Native 0.3.14", (COMP / "NOTICE").read_text())
+        self.assertIn(f'[[ "$VERSION" == "{version}" ]]', workflow)
+        self.assertIn(f'RELEASE_NOTES_{version}.md', workflow)
+        self.assertIn(f"Xiaomi Camera Native {version}", (COMP / "NOTICE").read_text())
 
     def test_license_and_test_evidence(self):
         root_license = (ROOT / "License").read_text()

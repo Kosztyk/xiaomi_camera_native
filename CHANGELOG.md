@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.15 — Xiaomi cloud setup recovery
+
+- Recover when Xiaomi rejects the cached session with HTTP 426 and sends
+  no `Upgrade` header. Sign in with the stored passToken and verify the
+  renewed session before saving it. [Issue #6](https://github.com/Kosztyk/xiaomi_camera_native/issues/6)
+- Rate-limit account refreshes so Home Assistant can retry after a temporary
+  Xiaomi login or API failure.
+- Remove the beta cloud probes and integration debug logging. Routine camera
+  warnings identify the model instead of the device ID.
+
 ## 0.3.14 — IMILAB ipc020 and streaming reliability
 
 - Add opt-in direct TUTK LAN video for `chuangmi.camera.ipc020`, with a

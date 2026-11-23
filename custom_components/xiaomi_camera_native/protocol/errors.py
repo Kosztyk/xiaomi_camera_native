@@ -17,6 +17,14 @@ class CloudError(XiaomiError):
         self.code = code
 
 
+class CloudHTTP426(CloudError):
+    """Xiaomi rejected the request with HTTP 426."""
+
+    def __init__(self, *, has_upgrade_header: bool) -> None:
+        super().__init__("Xiaomi cloud HTTP error 426")
+        self.has_upgrade_header = has_upgrade_header
+
+
 class ProtocolError(XiaomiError):
     """Invalid or unsupported camera protocol."""
 

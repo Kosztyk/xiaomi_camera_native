@@ -4,7 +4,9 @@
 
 **Direct Xiaomi camera streaming and pan/tilt controls for Home Assistant — without go2rtc.**
 
-Xiaomi Camera Native streams compatible cameras to Home Assistant over the local network. It uses **MISS over CS2** on most supported cameras. Version **0.3.14** adds opt-in **TUTK LAN streaming and horizontal pan** for the China-region IMILAB outdoor PTZ camera `chuangmi.camera.ipc020`. [ipc020 setup and hardware results](docs/IPC020.md)
+Xiaomi Camera Native streams compatible cameras to Home Assistant over the local network. It uses **MISS over CS2** on most supported cameras and offers opt-in **TUTK LAN streaming and horizontal pan** for the China-region IMILAB outdoor PTZ camera `chuangmi.camera.ipc020`. [ipc020 setup and hardware results](docs/IPC020.md)
+
+**Version 0.3.15** adds automatic recovery from the Xiaomi cloud HTTP 426 that affected setup for a China-region account. [Release notes](RELEASE_NOTES_0.3.15.md)
 
 Camera compatibility depends on model and firmware. The table below lists the hardware exercised in Home Assistant. [Validation details](VALIDATION.md)
 
@@ -247,6 +249,7 @@ Camera attributes include:
 | --- | --- |
 | No cameras discovered | Confirm the account, region and Mi Home device ownership. |
 | Authentication failure | Reauthenticate the integration; check the missing field names in the error without sharing their values. |
+| Xiaomi cloud HTTP 426 during setup | Update to v0.3.15 and restart Home Assistant. Home Assistant can retry the session refresh after a temporary login or API failure. Include the account region and setup error if the issue persists. |
 | CS2 handshake timeout | Check the camera address, LAN reachability and transport. Close competing camera viewers during the first test. |
 | `ipc020` provisioning fails with code `-6` | Enable **Use TUTK LAN transport (ipc020)**. See the [ipc020 guide](docs/IPC020.md#troubleshooting) for the next diagnostic fields. |
 | Missing or poor-quality C200 video | Try HD or explicit Quality 3. |

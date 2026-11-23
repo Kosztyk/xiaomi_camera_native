@@ -302,7 +302,7 @@ class CameraSession:
                 except BaseException:
                     await client.close()
                     raise
-                _LOGGER.info("Updated LAN address for Xiaomi camera %s", self.device.did)
+                _LOGGER.info("Updated LAN address for Xiaomi camera model %s", self.device.model)
             return client
         if error is not None:
             raise error
@@ -721,12 +721,12 @@ class CameraSession:
                         retryable and self.options.auto_update_ip and self._subscribers
                     ):
                         self._state("error")
-                        _LOGGER.warning("Xiaomi camera %s: %s", self.device.did, self.last_error)
+                        _LOGGER.warning("Xiaomi camera model %s: %s", self.device.model, self.last_error)
                         break
                     if failures == 4:
                         _LOGGER.warning(
-                            "Xiaomi camera %s is offline; retrying while viewers remain",
-                            self.device.did,
+                            "Xiaomi camera model %s is offline; retrying while viewers remain",
+                            self.device.model,
                         )
                     self.reconnects += 1
                 finally:

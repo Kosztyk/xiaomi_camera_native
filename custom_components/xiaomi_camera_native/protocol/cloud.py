@@ -12,13 +12,14 @@ import hashlib
 import json
 import secrets
 from dataclasses import dataclass
+from time import monotonic
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import aiohttp
 
 from .crypto import b64, encrypt_cloud_request, generate_keypair, rc4_drop1024
-from .errors import AuthenticationError, CloudError, LoginChallenge, ProtocolError
+from .errors import AuthenticationError, CloudError, CloudHTTP426, LoginChallenge, ProtocolError
 
 REGIONS = {
     "cn": "China",
@@ -30,6 +31,8 @@ REGIONS = {
 }
 ACCOUNT = "https://account.xiaomi.com"
 TIMEOUT = aiohttp.ClientTimeout(total=20)
+HTTP426_REFRESH_COOLDOWN = 60.0
+_HTTP426_REFRESH_RETRY_AT: dict[tuple[str, str], float] = {}
 
 
 @dataclass(repr=False)
@@ -116,6 +119,11 @@ class XiaomiCloud:
         self.credentials = Credentials()
         self._refresh_lock = asyncio.Lock()
         self._auth: dict[str, str] = {}
+        # Mi Home-compatible client identity for the legacy xiaomiio API.
+        self._user_agent = (
+            "Android-7.1.1-1.0.0-ONEPLUS A3010-136-"
+            f"{secrets.token_hex(8).upper()} APP/xiaomi.smarthome APPV/62830"
+        )
 
     @property
     def base_url(self) -> str:
@@ -367,6 +375,27 @@ class XiaomiCloud:
                 return
             except AuthenticationError:
                 pass
+            except CloudHTTP426 as error:
+                if error.has_upgrade_header:
+                    raise
+                previous = self.credentials
+                key = (self.region, previous.user_id)
+                now = monotonic()
+                if now < _HTTP426_REFRESH_RETRY_AT.get(key, now):
+                    raise
+                # Reserve the refresh across clients until login and verification finish.
+                _HTTP426_REFRESH_RETRY_AT[key] = float("inf")
+                try:
+                    await self.login_with_token(previous.user_id, previous.pass_token)
+                    await self.request(
+                        "/v2/home/device_list_page", {"limit": 1}, retry=False
+                    )
+                except BaseException:
+                    self.credentials = previous
+                    raise
+                finally:
+                    _HTTP426_REFRESH_RETRY_AT[key] = monotonic() + HTTP426_REFRESH_COOLDOWN
+                return
         await self.login_with_token(self.credentials.user_id, self.credentials.pass_token)
 
     async def login_with_token(self, user_id: str, pass_token: str) -> None:
@@ -399,13 +428,22 @@ class XiaomiCloud:
                     "userId": creds.user_id,
                     "cUserId": creds.c_user_id,
                     "serviceToken": creds.service_token,
+                    "yetAnotherServiceToken": creds.service_token,
                 },
-                headers={"MIOT-ENCRYPT-ALGORITHM": "ENCRYPT-RC4", "Accept-Encoding": "identity"},
+                headers={
+                    "MIOT-ENCRYPT-ALGORITHM": "ENCRYPT-RC4",
+                    "Accept-Encoding": "identity",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-XIAOMI-PROTOCAL-FLAG-CLI": "PROTOCAL-HTTP2",
+                    "User-Agent": self._user_agent,
+                },
                 timeout=TIMEOUT,
                 allow_redirects=False,
             ) as response:
                 if response.status in (401, 403):
                     result = {"code": -10001}
+                elif response.status == 426:
+                    raise CloudHTTP426(has_upgrade_header="Upgrade" in response.headers)
                 elif response.status != 200:
                     raise CloudError(f"Xiaomi cloud HTTP error {response.status}")
                 else:

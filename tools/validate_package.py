@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAIN = 'xiaomi_camera_native'
+RELEASE_VERSION = '0.3.15'
 REQUIRED_FIELDS = {'domain', 'documentation', 'issue_tracker', 'codeowners', 'name', 'version'}
 
 
@@ -31,7 +32,7 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
     required('VALIDATION.md')
     required('HACS_PUBLISHING.md')
     required('docs/IPC020.md')
-    required('RELEASE_NOTES_0.3.14.md')
+    required(f'RELEASE_NOTES_{RELEASE_VERSION}.md')
 
     if manifest_path.is_file():
         try:
@@ -41,8 +42,8 @@ def inspect_repository(root: Path = ROOT) -> list[str]:
                 errors.append(f'Manifest missing: {", ".join(sorted(missing))}')
             if manifest.get('domain') != DOMAIN:
                 errors.append('Domain does not match component folder name')
-            if manifest.get('version') != '0.3.14':
-                errors.append('Manifest version must match the v0.3.14 release')
+            if manifest.get('version') != RELEASE_VERSION:
+                errors.append(f'Manifest version must match the v{RELEASE_VERSION} release')
             if not manifest.get('codeowners'):
                 errors.append('Manifest needs at least one codeowner')
             expected_order = ['domain', 'name'] + sorted(

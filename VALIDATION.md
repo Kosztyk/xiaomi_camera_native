@@ -2,7 +2,7 @@
 
 This document distinguishes packaging checks from functional hardware testing.
 
-## Release validation (0.3.14)
+## Release validation (0.3.15)
 
 Run from the root of the repository:
 
@@ -14,15 +14,21 @@ node --test tests/test_ipc020_frontend.js
 ```
 
 The Python tests cover packaging, translations, version and license
-consistency, device-registry cleanup, Xiaomi request handling, media transport,
-snapshot limits, stream and encoder recovery, and supported movement
-directions. The JavaScript test checks popup controls for both `ipc020` and
-four-direction CS2 cameras. These checks use synthetic inputs and test doubles.
+consistency, device-registry cleanup, Xiaomi request handling and HTTP 426
+recovery, media transport, snapshot limits, stream and encoder recovery, and
+supported movement directions. The JavaScript test checks popup controls for
+both `ipc020` and four-direction CS2 cameras. These checks use synthetic inputs
+and test doubles.
 
 The GitHub workflow also runs the `HACS Validation` and
 `Hassfest Validation` jobs before publishing the release.
 
 ## Hardware and runtime compatibility
+
+The reporter for issue #6 verified that the China-region entry loaded with
+`v0.3.15b3` and diagnostics disabled. Snapshots, live view and movement worked
+on two `ip029a` cameras and an `ipc020`. This is the field test of the cloud
+recovery used by `v0.3.15`. [Issue #6 test report](https://github.com/Kosztyk/xiaomi_camera_native/issues/6#issuecomment-7097265445)
 
 On **2026-10-24** the owner tested actual Xiaomi cameras using the native
 Home Assistant Xiaomi Camera Native v0.3.8 buttons. Screen
