@@ -6,7 +6,7 @@
 
 Xiaomi Camera Native streams compatible cameras to Home Assistant over the local network. It uses **MISS over CS2** on most supported cameras and offers opt-in **TUTK LAN streaming and horizontal pan** for the China-region IMILAB outdoor PTZ camera `chuangmi.camera.ipc020`. [ipc020 setup and hardware results](docs/IPC020.md)
 
-**Version 0.3.15** adds automatic recovery from the Xiaomi cloud HTTP 426 that affected setup for a China-region account. [Release notes](RELEASE_NOTES_0.3.15.md)
+**Version 0.3.16** adds four-direction pan and tilt for the **Mi 360 Home Security Camera 2K Pro** (`chuangmi.camera.021a04`). [Release notes](RELEASE_NOTES_0.3.16.md)
 
 Camera compatibility depends on model and firmware. The table below lists the hardware exercised in Home Assistant. [Validation details](VALIDATION.md)
 
@@ -30,12 +30,15 @@ No go2rtc process, bridge container, add-on or Xiaomi native SDK is required by 
 | Camera | Model | Transport | Movement | Default quality |
 | --- | --- | --- | --- | --- |
 | Mi 360 Home Security Camera 2K | `chuangmi.camera.029a02` | MISS/CS2 | Left, right, up, down | HD, quality 2 |
+| Mi 360 Home Security Camera 2K Pro | `chuangmi.camera.021a04` | MISS/CS2 | Left, right, up, down | HD, quality 2 |
 | Xiaomi Smart Camera PTZ Version 2K (China) | `chuangmi.camera.ip029a` | MISS/CS2 | Left, right, up, down | HD, quality 2 |
 | Xiaomi Smart Camera C200 | `chuangmi.camera.046c04` | MISS/CS2 | Left, right, up, down | HD, quality 3 |
 | Xiaomi Smart Camera C301 | `mxiang.camera.c301` | MISS/CS2 | Left, right, up, down | Automatic, quality 0 |
 | IMILAB outdoor PTZ (China) | `chuangmi.camera.ipc020` | TUTK/UDP, opt-in | Left and right, opt-in and live-only | HD |
 
-The four CS2 models create their movement buttons automatically. For `ipc020`, the tester confirmed H.265 source video, H.264 output, and physical left/right movement with both the device buttons and the popup on firmware `4.0.9_0102` using `v0.3.14b5`. The camera uses the same two directions in Mi Home. [CS2 hardware evidence](VALIDATION.md#hardware-and-runtime-compatibility) · [ipc020 hardware evidence](docs/IPC020.md#hardware-verification)
+The CS2 models in the table create their movement buttons automatically. The 2K Pro owner confirmed all four directions from the device buttons and the popup using a Europe (`de`) account on Home Assistant Core 2026.11.3. [Issue #7 field report](https://github.com/Kosztyk/xiaomi_camera_native/issues/7)
+
+For `ipc020`, the tester confirmed H.265 source video, H.264 output, and physical left/right movement with both the device buttons and the popup on firmware `4.0.9_0102` using `v0.3.14b5`. The camera uses the same two directions in Mi Home. [ipc020 hardware evidence](docs/IPC020.md#hardware-verification)
 
 Other MISS/CS2 models may stream video. Movement controls require a supported model.
 
@@ -169,7 +172,7 @@ The pop-up enhancement follows Home Assistant's current camera dialog structure.
 
 ### Device buttons and automations
 
-The four CS2 models provide four ordinary `button.*` entities:
+Each supported CS2 model provides these `button.*` entities:
 
 - **Pan left**
 - **Pan right**
@@ -249,7 +252,7 @@ Camera attributes include:
 | --- | --- |
 | No cameras discovered | Confirm the account, region and Mi Home device ownership. |
 | Authentication failure | Reauthenticate the integration; check the missing field names in the error without sharing their values. |
-| Xiaomi cloud HTTP 426 during setup | Update to v0.3.15 and restart Home Assistant. Home Assistant can retry the session refresh after a temporary login or API failure. Include the account region and setup error if the issue persists. |
+| Xiaomi cloud HTTP 426 during setup | Update to v0.3.15 or later and restart Home Assistant. Home Assistant can retry the session refresh after a temporary login or API failure. Include the account region and setup error if the issue persists. |
 | CS2 handshake timeout | Check the camera address, LAN reachability and transport. Close competing camera viewers during the first test. |
 | `ipc020` provisioning fails with code `-6` | Enable **Use TUTK LAN transport (ipc020)**. See the [ipc020 guide](docs/IPC020.md#troubleshooting) for the next diagnostic fields. |
 | Missing or poor-quality C200 video | Try HD or explicit Quality 3. |

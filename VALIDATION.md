@@ -2,7 +2,7 @@
 
 This document distinguishes packaging checks from functional hardware testing.
 
-## Release validation (0.3.15)
+## Release validation (0.3.16)
 
 Run from the root of the repository:
 
@@ -24,6 +24,15 @@ The GitHub workflow also runs the `HACS Validation` and
 `Hassfest Validation` jobs before publishing the release.
 
 ## Hardware and runtime compatibility
+
+The owner of a **Mi 360 Home Security Camera 2K Pro** (`chuangmi.camera.021a04`)
+reported MISS/CS2 streaming with a Europe (`de`) account on Home Assistant
+Core 2026.11.3, running Home Assistant OS on a Raspberry Pi 4. After adding
+the model to the PTZ allowlist in `v0.3.15`, the owner confirmed physical
+left, right, up and down movement from both the device buttons and popup
+arrows. The existing MISS `0x112` command worked and `last_ptz_error` stayed
+`null`. That report covers one camera and is the basis for enabling PTZ by
+default on this model in `v0.3.16`. [Issue #7 field report](https://github.com/Kosztyk/xiaomi_camera_native/issues/7)
 
 The reporter for issue #6 verified that the China-region entry loaded with
 `v0.3.15b3` and diagnostics disabled. Snapshots, live view and movement worked

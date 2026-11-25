@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.16 — Mi 360 Home Security Camera 2K Pro pan and tilt
+
+- Enable left, right, up and down on `chuangmi.camera.021a04` through the
+  Home Assistant device buttons and camera popup. The owner confirmed physical
+  movement over MISS/CS2 with a Europe (`de`) account. [Issue #7](https://github.com/Kosztyk/xiaomi_camera_native/issues/7)
+- Show **Mi 360 Home Security Camera 2K Pro** as the model name in Home Assistant.
+
 ## 0.3.15 — Xiaomi cloud setup recovery
 
 - Recover when Xiaomi rejects the cached session with HTTP 426 and sends

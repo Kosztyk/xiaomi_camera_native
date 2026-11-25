@@ -13,14 +13,12 @@ from .cs2 import CS2Connection
 from .errors import ProtocolError, TransportError
 
 PAN_TILT_OPERATIONS = {"left": 1, "right": 2, "up": 3, "down": 4}
-# Models with physical PTZ evidence using Xiaomi Camera Native's native MISS controls:
-# three owner-recorded tests (2026-10-24) and one independent user report (2026-11-12).
-# The ip029a report confirms left/right/up/down on ONE camera and streaming on TWO.
-# See docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md and
-# docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md.
+# Models with physical movement confirmed using the native MISS controls.
+# See VALIDATION.md for the scope of each hardware test.
 PAN_TILT_MODELS = frozenset(
     {
         "chuangmi.camera.029a02",
+        "chuangmi.camera.021a04",
         "chuangmi.camera.ip029a",
         "chuangmi.camera.046c04",
         "mxiang.camera.c301",

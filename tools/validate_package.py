@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAIN = 'xiaomi_camera_native'
-RELEASE_VERSION = '0.3.15'
+RELEASE_VERSION = '0.3.16'
 REQUIRED_FIELDS = {'domain', 'documentation', 'issue_tracker', 'codeowners', 'name', 'version'}
 
 

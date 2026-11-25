@@ -4,10 +4,10 @@ Repository: https://github.com/Kosztyk/xiaomi_camera_native
 
 ## Review fixes and hardware evidence
 
-In v0.3.15 English translations match `strings.json`, runtime and manifest
+In v0.3.16 English translations match `strings.json`, runtime and manifest
 versions agree, and the root and bundled MIT licenses preserve Kosztyk
-and Alexey Khit attribution. The four verified CS2 models, including
-`chuangmi.camera.ip029a`, have four movement directions by default.
+and Alexey Khit attribution. The five supported CS2 models have four movement
+directions by default. [Model and hardware evidence](VALIDATION.md#hardware-and-runtime-compatibility)
 
 The [hardware report](docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md) links to
 the three public recordings already attached to the
@@ -31,7 +31,7 @@ Python checks** are successful. Address any findings before releasing.
 
 ## GitHub release
 
-The guarded v0.3.15 release workflow creates a full GitHub release only after
+The guarded v0.3.16 release workflow creates a full GitHub release only after
 successful main-branch validation and only while the validated commit is still
 the main branch head. Confirm that the release points to the validated commit.
 

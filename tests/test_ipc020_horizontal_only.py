@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from test_ip029a import MI_360_2K_PRO, VERIFIED, _policy
 from test_ipc020_tutk_transport import load_protocol
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,9 +45,7 @@ class DirectionPolicyTests(unittest.TestCase):
         cls.Policy = isolated_code(
             "protocol/session.py", "CameraSession",
             ("_uses_legacy_tutk", "supported_pan_tilt_directions", "supports_pan_tilt"),
-            {"pan_tilt_supported": lambda model, *, experimental_enabled: model in {
-                IP029A, "chuangmi.camera.029a02", "chuangmi.camera.046c04", "mxiang.camera.c301"
-            }},
+            {"pan_tilt_supported": _policy()["pan_tilt_supported"]},
         )
 
     def policy(self, model, legacy=False, motor=False):
@@ -67,7 +66,7 @@ class DirectionPolicyTests(unittest.TestCase):
             self.assertFalse(p.supports_pan_tilt)
 
     def test_verified_cs2_models_retain_all_four_buttons(self):
-        for model in (IP029A, "chuangmi.camera.029a02", "chuangmi.camera.046c04", "mxiang.camera.c301"):
+        for model in sorted(VERIFIED):
             p = self.policy(model)
             self.assertEqual(p.supported_pan_tilt_directions, ("left", "right", "up", "down"))
 
@@ -84,13 +83,19 @@ class ButtonSetupTests(unittest.IsolatedAsyncioTestCase):
                                    supported_pan_tilt_directions=("left", "right")),
                    SimpleNamespace(device=SimpleNamespace(model=IP029A), supports_pan_tilt=True,
                                    supported_pan_tilt_directions=("left", "right", "up", "down")),
+                   SimpleNamespace(device=SimpleNamespace(model=MI_360_2K_PRO), supports_pan_tilt=True,
+                                   supported_pan_tilt_directions=("left", "right", "up", "down")),
                    SimpleNamespace(device=SimpleNamespace(model="other"), supports_pan_tilt=False,
                                    supported_pan_tilt_directions=())]
         entry = SimpleNamespace(runtime_data=SimpleNamespace(sessions={i: cam for i, cam in enumerate(cameras)}))
         created = []
         await setup(None, entry, lambda items: created.extend(items))
         self.assertEqual(created[:2], [(IPC020, "left"), (IPC020, "right")])
-        self.assertEqual(created[2:], [(IP029A, k) for k in ("left", "right", "up", "down")])
+        self.assertEqual(created[2:], [
+            (model, key)
+            for model in (IP029A, MI_360_2K_PRO)
+            for key in ("left", "right", "up", "down")
+        ])
 
 
 class RegistryCleanupTests(unittest.TestCase):

@@ -4,9 +4,10 @@ import json
 import unittest
 from pathlib import Path
 
+from test_ip029a import MI_360_2K_PRO, VERIFIED
+
 ROOT = Path(__file__).resolve().parents[1]
 COMP = ROOT / "custom_components/xiaomi_camera_native"
-MODELS = {"chuangmi.camera.029a02", "chuangmi.camera.ip029a", "chuangmi.camera.046c04", "mxiang.camera.c301"}
 
 class ReviewerTests(unittest.TestCase):
     def test_pan_tilt_allowlist_matches_verified_models(self):
@@ -14,7 +15,7 @@ class ReviewerTests(unittest.TestCase):
         nodes = [stmt.value for stmt in module.body if isinstance(stmt, ast.Assign)
                  if any(isinstance(t, ast.Name) and t.id=="PAN_TILT_MODELS" for t in stmt.targets)]
         self.assertEqual(len(nodes), 1)
-        self.assertEqual(ast.literal_eval(nodes[0].args[0]), MODELS)
+        self.assertEqual(ast.literal_eval(nodes[0].args[0]), VERIFIED)
 
     def test_translations(self):
         strings = json.loads((COMP / "strings.json").read_text())
@@ -32,7 +33,7 @@ class ReviewerTests(unittest.TestCase):
     def test_versions(self):
         manifest = json.loads((COMP / "manifest.json").read_text())
         version = manifest["version"]
-        self.assertEqual(version, "0.3.15")
+        self.assertEqual(version, "0.3.16")
         self.assertIn(f'VERSION = "{version}"', (COMP / "const.py").read_text())
         self.assertIn('camera-controls.js?v={VERSION}', (COMP / "frontend.py").read_text())
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
@@ -46,11 +47,14 @@ class ReviewerTests(unittest.TestCase):
         self.assertIn("Copyright (c) 2026 Kosztyk", root_license)
         self.assertIn("Copyright (c) 2022 Alexey Khit", root_license)
         report = (ROOT / "docs/PTZ_HARDWARE_VERIFICATION_2026-10-24.md").read_text()
-        for model in MODELS - {"chuangmi.camera.ip029a"}:
+        for model in VERIFIED - {"chuangmi.camera.ip029a", MI_360_2K_PRO}:
             self.assertIn(model, report)
         ip029a_report = (ROOT / "docs/PTZ_HARDWARE_VERIFICATION_2026-11-12_ip029a.md").read_text()
         self.assertIn("chuangmi.camera.ip029a", ip029a_report)
         self.assertIn("one camera", ip029a_report.lower())
+        validation = (ROOT / "VALIDATION.md").read_text()
+        self.assertIn(MI_360_2K_PRO, validation)
+        self.assertIn("https://github.com/Kosztyk/xiaomi_camera_native/issues/7", validation)
 
 if __name__ == "__main__":
     unittest.main()

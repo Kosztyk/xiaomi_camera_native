@@ -1,4 +1,4 @@
-"""Dependency-free regression tests for ip029a hardware-verified promotion.
+"""Dependency-free regression tests for hardware-verified PTZ models.
 
 Extract only the pure policy function and data class into an isolated AST
 namespace; installing Home Assistant is not required to run these checks.
@@ -9,11 +9,19 @@ import json
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
+from runpy import run_path
 from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 COMP = ROOT / "custom_components/xiaomi_camera_native"
-VERIFIED = {"chuangmi.camera.029a02", "chuangmi.camera.ip029a", "chuangmi.camera.046c04", "mxiang.camera.c301"}
+MI_360_2K_PRO = "chuangmi.camera.021a04"
+VERIFIED = {
+    "chuangmi.camera.029a02",
+    MI_360_2K_PRO,
+    "chuangmi.camera.ip029a",
+    "chuangmi.camera.046c04",
+    "mxiang.camera.c301",
+}
 EXPERIMENTAL = {"chuangmi.camera.ipc020"}
 
 
@@ -36,13 +44,13 @@ def _policy():
 
 
 class Ip029aTests(unittest.TestCase):
-    def test_four_verified_models_and_one_opt_in_test_model(self):
+    def test_verified_models_and_one_opt_in_test_model(self):
         ns = _policy()
         self.assertEqual(ns["PAN_TILT_MODELS"], VERIFIED)
         self.assertEqual(ns["EXPERIMENTAL_PAN_TILT_MODELS"], EXPERIMENTAL)
         self.assertEqual(ns["PAN_TILT_OPERATIONS"], {"left": 1, "right": 2, "up": 3, "down": 4})
 
-    def test_ip029a_ptz_enabled_even_without_old_opt_in(self):
+    def test_verified_models_have_ptz_by_default(self):
         allow = _policy()["pan_tilt_supported"]
         for model in VERIFIED:
             for old_switch in (False, True, "true", 1):
@@ -50,6 +58,10 @@ class Ip029aTests(unittest.TestCase):
         for model in ("", "random.camera", "chuangmi.camera.ipc019", "chuangmi.camera.039c01"):
             self.assertFalse(allow(model))
             self.assertFalse(allow(model, experimental_enabled=True))
+
+    def test_2k_pro_uses_the_consumer_model_name(self):
+        model_names = run_path(str(COMP / "const.py"))["TARGET_MODELS"]
+        self.assertEqual(model_names[MI_360_2K_PRO], "Mi 360 Home Security Camera 2K Pro")
 
     def test_profile_opt_in_defaults_off_and_persists_boolean(self):
         module = ast.parse((COMP / "protocol/session.py").read_text())

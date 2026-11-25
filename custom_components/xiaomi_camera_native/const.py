@@ -1,7 +1,7 @@
 """Integration constants."""
 
 DOMAIN = "xiaomi_camera_native"
-VERSION = "0.3.15"
+VERSION = "0.3.16"
 CONF_USER_ID = "user_id"
 CONF_PASS_TOKEN = "pass_token"
 CONF_REGION = "region"
@@ -9,6 +9,7 @@ CONF_DEVICES = "devices"
 CONF_PROFILES = "profiles"
 TARGET_MODELS = {
     "chuangmi.camera.029a02": "Mi 360 Home Security Camera 2K",
+    "chuangmi.camera.021a04": "Mi 360 Home Security Camera 2K Pro",
     "chuangmi.camera.ip029a": "Xiaomi Smart Camera PTZ Version 2K (China)",
     "chuangmi.camera.ipc020": "IMILAB Outdoor PTZ N Series (TEST)",
     "chuangmi.camera.046c04": "Xiaomi Smart Camera C200",
